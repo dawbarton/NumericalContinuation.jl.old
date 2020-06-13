@@ -19,8 +19,7 @@ struct Var
     initial_t::Any
     toplevel::Bool
 end
-Var(name, initial_u, initial_t = nothing) =
-    Var(name, initial_u, initial_t, false)
+Var(name, initial_u, initial_t = nothing) = Var(name, initial_u, initial_t, false)
 
 function Base.show(io::IO, mime::MIME"text/plain", var::Var)
     println(io, "Var($(var.name))")
@@ -58,8 +57,17 @@ struct Func
 end
 
 function Func(name, func, initial_f, group = [:embedded], pass_problem = false)
-    Func(name, func, initial_f, group, pass_problem, Var[], Dict{String,Int64}(), Data[],
-        Dict{String,Int64}())
+    Func(
+        name,
+        func,
+        initial_f,
+        group,
+        pass_problem,
+        Var[],
+        Dict{String,Int64}(),
+        Data[],
+        Dict{String,Int64}(),
+    )
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", func::Func)
@@ -122,14 +130,18 @@ for (Collection, Item, name) in (
         return collection
     end
 
-    @eval function Base.getindex(collection::$Collection, ::Type{$Item}, item::AbstractString)
+    @eval function Base.getindex(
+        collection::$Collection,
+        ::Type{$Item},
+        item::AbstractString,
+    )
         return collection.$name[collection.$(Symbol(name, "_names"))[item]]
     end
 end
 
 for (Collection, names) in ((Func, (:var, :data)), (Problem, (:func, :problem)))
     @eval function Base.getindex(collection::$Collection, item::AbstractString)
-        itempath = split(item, ".", limit=2)
+        itempath = split(item, ".", limit = 2)
         for subcollection in $names
             names_dict = getfield(collection, Symbol(subcollection, "_names"))
             if haskey(names_dict, itempath[1])
@@ -153,8 +165,7 @@ end
 """
 A flattened representation of a continuation problem.
 """
-struct FlatProblem
-    name::String
+struct FlatProblem{G,O}
     var::Vector{Var}
     var_names::Dict{String,Int64}
     data::Vector{Data}
@@ -165,11 +176,11 @@ struct FlatProblem
     group_names::Dict{Symbol,Int64}
     problem::Vector{Problem}
     problem_names::Dict{String,Int64}
-    owner::Any
+    call_group::G
+    call_owner::O
 end
 
-FlatProblem(name, owner = nothing) = FlatProblem(
-    name,
+FlatProblem() = FlatProblem(
     Var[],
     Dict{String,Int64}(),
     Data[],
@@ -180,15 +191,42 @@ FlatProblem(name, owner = nothing) = FlatProblem(
     Dict{Symbol,Int64}(),
     Problem[],
     Dict{String,Int64}(),
-    owner,
+    nothing,
+    nothing,
 )
 
+function Base.show(io::IO, mime::MIME"text/plain", flat::FlatProblem)
+    println(io, "FlatProblem()")
+    println(io, "    var → $([nameof(v) for v in flat.var])")
+    println(io, "    data → $([nameof(d) for d in flat.data])")
+    println(io, "    func → $([nameof(f) for f in flat.func])")
+    println(io, "    problem → $([nameof(p) for p in flat.problem])")
+    print(io, "    group → $([g for g in keys(flat.group_names)])")
+end
+
 function flatten(problem::Problem)
-    flat = FlatProblem(problem.name, problem.owner)
+    flat = FlatProblem()
     _flatten!(flat, problem, "")
+    call_group = Tuple(eval(_gen_call_group(flat, i)) for i in eachindex(flat.group))
+    call_owner = eval(_gen_call_owner(flat))
+    return FlatProblem(
+        flat.var,
+        flat.var_names,
+        flat.data,
+        flat.data_names,
+        flat.func,
+        flat.func_names,
+        flat.group,
+        flat.group_names,
+        flat.problem,
+        flat.problem_names,
+        call_group,
+        call_owner,
+    )
 end
 
 function _flatten!(flat::FlatProblem, problem::Problem, basename)
+    push!(flat.problem, problem)
     # Iterate over the sub-problems (depth first)
     for subproblem in problem.problem
         if isempty(subproblem.name)
@@ -261,7 +299,7 @@ function _flatten!(flat::FlatProblem, problem::Problem, basename)
     return flat
 end
 
-function _generate_func(flat::FlatProblem, group::Integer)
+function _gen_call_group(flat::FlatProblem, group::Integer)
     func = :(function (res, u, data, problem) end)
     for (i, f) in enumerate(flat.group[group])
         func_f = :($(f.func)(res[$i]))
@@ -295,4 +333,16 @@ function _generate_func(flat::FlatProblem, group::Integer)
     push!(func.args[2].args, :nothing)
     return func
 end
-_generate_func(flat::FlatProblem, group::Symbol) = _generate_func(flat, flat.group_names[group])
+_gen_call_group(flat::FlatProblem, group::Symbol) =
+    _gen_call_group(flat, flat.group_names[group])
+
+function _gen_call_owner(flat::FlatProblem)
+    func = :(function (signal, problem) end)
+    for problem in flat.problem
+        if problem.owner !== nothing
+            push!(func.args[2].args, :($(problem.owner)(signal, problem)))
+        end
+    end
+    push!(func.args[2].args, :nothing)
+    return func
+end

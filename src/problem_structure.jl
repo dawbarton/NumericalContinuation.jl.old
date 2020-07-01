@@ -22,7 +22,7 @@ end
 Var(name, initial_u, initial_t = nothing) = Var(name, initial_u, initial_t, false)
 
 function Base.show(io::IO, mime::MIME"text/plain", var::Var)
-    println(io, "Var($(var.name))")
+    println(io, "$Var($(var.name))")
     println(io, "    initial_u → $(var.initial_u)")
     print(io, "    initial_t → $(var.initial_t)")
 end
@@ -37,7 +37,7 @@ struct Data
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", data::Data)
-    println(io, "Data($(data.name))")
+    println(io, "$Data($(data.name))")
     print(io, "    initial_data → $(data.initial_data)")
 end
 
@@ -71,7 +71,7 @@ function Func(name, func, initial_f, group = [:embedded], pass_problem = false)
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", func::Func)
-    println(io, "Func($(func.name))")
+    println(io, "$Func($(func.name))")
     println(io, "    initial_f → $(func.initial_f)")
     println(io, "    group → $(func.group)")
     println(io, "    pass_problem → $(func.pass_problem)")
@@ -101,7 +101,7 @@ Problem(name, owner = nothing) = Problem(
 )
 
 function Base.show(io::IO, mime::MIME"text/plain", problem::Problem)
-    println(io, "Problem($(problem.name))")
+    println(io, "$Problem($(problem.name))")
     println(io, "    func → $([nameof(f) for f in problem.func])")
     print(io, "    problem → $([nameof(p) for p in problem.problem])")
 end
@@ -196,7 +196,7 @@ FlatProblem() = FlatProblem(
 )
 
 function Base.show(io::IO, mime::MIME"text/plain", flat::FlatProblem)
-    println(io, "FlatProblem()")
+    println(io, "$FlatProblem()")
     println(io, "    var → $([nameof(v) for v in flat.var])")
     println(io, "    data → $([nameof(d) for d in flat.data])")
     println(io, "    func → $([nameof(f) for f in flat.func])")
@@ -204,6 +204,10 @@ function Base.show(io::IO, mime::MIME"text/plain", flat::FlatProblem)
     print(io, "    group → $([g for g in keys(flat.group_names)])")
 end
 
+"""
+Take a hierarchical `Problem` structure and return a flattened version that contains
+generated code for each function group.
+"""
 function flatten(problem::Problem)
     flat = FlatProblem()
     _flatten!(flat, problem, "")

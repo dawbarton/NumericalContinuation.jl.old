@@ -1,21 +1,12 @@
 module NumericalContinuation
 
-using DocStringExtensions
 
-@template TYPES = """
-    $(TYPEDEF)
-    $(DOCSTRING)
-    # Fields
-    $(TYPEDFIELDS)
-    """
+using TimerOutputs  # TODO: remove when finished
+const to = TimerOutput()
 
-@template (FUNCTIONS, METHODS, MACROS) = """
-    $(SIGNATURES)
-    $(DOCSTRING)
-    $(METHODLIST)
-    """
-
+include("docstrings.jl")
 include("problem_structure.jl")
+include("view_vector.jl")
 include("AlgebraicProblems.jl")
 
 end # module

@@ -1,6 +1,4 @@
 """
-    AlgebraicProblems
-
 This module implements basic functionality to construct algebraic problems of
 the form
 
@@ -10,12 +8,12 @@ the form
 
 where `u` and `p` are the state variables and parameters respectively. Both `u`
 and `p` can be scalars or vectors.
-
-See [`add_algebraicproblem!`](@ref) for details.
 """
 module AlgebraicProblems
 
-using ..NumericalContinuation: Var, Func, Problem
+using ..NumericalContinuation: NumericalContinuation, Var, Func, Problem
+
+include("docstrings.jl")
 
 export AlgebraicProblem
 

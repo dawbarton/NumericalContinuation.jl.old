@@ -1,3 +1,8 @@
+"""
+Define a dimension of an array in terms of a sequence of sub-vectors of specified
+dimensions. When used with a `ViewArray`, it allows views into an array to be generated on
+demand.
+"""
 struct ViewAxis
     dims::Vector{Int64}
     indices::Vector{UnitRange{Int64}}
@@ -12,6 +17,10 @@ function Base.setindex!(axis::ViewAxis, dim, idx)
     return dim
 end
 
+"""
+Update the internal indicies of the `ViewAxis` if the dimensions have been changed. This
+function is automatically called when a `ViewArray` is created from the ViewAxis.
+"""
 function update_indices!(axis::ViewAxis)
     if axis.dirty[]
         idx0 = 0
@@ -28,6 +37,10 @@ function Base.show(io::IO, mime::MIME"text/plain", axis::ViewAxis)
     print(io, "$ViewAxis($(axis.dims))")
 end
 
+"""
+A `ViewArray` generates views into an underlying array on demand when indexed. The
+size/shape of the views is determined by the `ViewAxis` used to create the `ViewArray`.
+"""
 struct ViewArray{N, A}
     axes::NTuple{N, ViewAxis}
     array::A

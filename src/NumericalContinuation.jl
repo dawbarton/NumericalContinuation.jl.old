@@ -6,7 +6,7 @@ const to = TimerOutput()
 
 include("docstrings.jl")
 include("problem_structure.jl")
+include("zero_problem.jl")
 include("view_vector.jl")
-include("AlgebraicProblems.jl")
 
 end # module

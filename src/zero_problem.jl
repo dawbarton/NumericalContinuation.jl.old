@@ -1,33 +1,16 @@
-"""
-This module implements basic functionality to construct algebraic problems of
-the form
+export zero_problem
 
-```math
-    0 = f(u, p)
-```
-
-where `u` and `p` are the state variables and parameters respectively. Both `u`
-and `p` can be scalars or vectors.
-"""
-module AlgebraicProblems
-
-using ..NumericalContinuation: NumericalContinuation, Var, Func, Problem
-
-include("docstrings.jl")
-
-export AlgebraicProblem
-
-struct AlgebraicFunc{U, P, F}
+struct ZeroFunc{U, P, F}
     f!::F
 end
 
-_convert_to(T, val) = val
-_convert_to(::Type{<:Number}, val) = val[1]
+_lift(T, val) = val
+_lift(::Type{<:Number}, val) = val[1]
 
-(af::AlgebraicFunc{U, P})(res, (u, p)) where {U, P} = af.f!(res, _convert_to(U, u), _convert_to(P, p))
+(af::ZeroFunc{U, P})(res, (u, p)) where {U, P} = af.f!(res, _lift(U, u), _lift(P, p))
 
 """
-Construct an algebraic zero problem of the form
+Construct a zero problem of the form
 
 ```math
     0 = f(u, p),
@@ -39,7 +22,7 @@ dimension as `u`.
 
 # Parameters
 
-* `name::String` : the name of the algebraic zero problem.
+* `name::String` : the name of the zero problem.
 * `f` : the function to use for the zero problem. It takes either two arguments
   (`u` and `p`) or three arguments for an in-place version (`res`, `u`, and `p`).
 * `u0` : the initial state value (either scalar- or vector-like).
@@ -50,10 +33,10 @@ dimension as `u`.
 # Example
 
 ```
-prob = AlgebraicProblem("cubic", (u, p) -> u^3 - p, 1.5, 1)  # u0 = 1.5, p0 = 1
+prob = zero_problem("cubic", (u, p) -> u^3 - p, 1.5, 1)  # u0 = 1.5, p0 = 1
 ```
 """
-function AlgebraicProblem(name::String, f, u0, p0; pnames=nothing)
+function zero_problem(name::String, f, u0, p0; pnames=nothing)
     # Determine whether f is in-place or not
     if any(method.nargs == 4 for method in methods(f))
         f! = f
@@ -68,7 +51,7 @@ function AlgebraicProblem(name::String, f, u0, p0; pnames=nothing)
     # Give the user-provided function the input expected
     U = u0 isa Number ? Number : Vector
     P = p0 isa Number ? Number : Vector
-    alg = AlgebraicFunc{U, P, typeof(f!)}(f!)
+    alg = ZeroFunc{U, P, typeof(f!)}(f!)
     # Create the necessary continuation variables and add the function
     u = Var("u", (U === Number ? [u0] : u0))
     p = Var("p", (P === Number ? [p0] : p0))
@@ -78,5 +61,3 @@ function AlgebraicProblem(name::String, f, u0, p0; pnames=nothing)
     # TODO: Should also add the parameters as monitor functions
     return push!(Problem(name), func)
 end
-
-end # module

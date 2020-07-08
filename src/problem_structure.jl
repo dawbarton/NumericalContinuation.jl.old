@@ -89,7 +89,10 @@ struct Problem
     problem::Vector{Problem}
     problem_names::Dict{String,Int64}
     owner::Any
+    owner_pass_indices::Vector{Union{Var, Data, Func, Problem}}
 end
+
+const ProblemTypes = Union{Var, Data, Func, Problem}  # Cannot put this earlier because of type recursion issue
 
 Problem(name, owner = nothing) = Problem(
     name,
@@ -98,12 +101,22 @@ Problem(name, owner = nothing) = Problem(
     Problem[],
     Dict{String,Int64}(),
     owner,
+    ProblemTypes[],
 )
 
 function Base.show(io::IO, mime::MIME"text/plain", problem::Problem)
     println(io, "$Problem($(problem.name))")
     println(io, "    func → $([nameof(f) for f in problem.func])")
     print(io, "    problem → $([nameof(p) for p in problem.problem])")
+end
+
+"""
+Request that the indices of a particular item (Var, Data, Func, or Problem) are passed to
+the problem owner when signalled.
+"""
+function pass_indices!(problem::Problem, item::ProblemTypes)
+    push!(problem.owner_pass_indices, item)
+    return problem
 end
 
 # Generic functions for all collections
@@ -163,6 +176,12 @@ for Item in (Var, Data, Func, Problem)
 end
 
 """
+A signal type for indicating a particular signal should be processed.
+"""
+struct Signal{S <: Symbol} end
+@inline Signal(S::Symbol) = Signal{S}()
+
+"""
 A flattened representation of a continuation problem.
 """
 struct FlatProblem{G,O}
@@ -197,11 +216,11 @@ FlatProblem() = FlatProblem(
 
 function Base.show(io::IO, mime::MIME"text/plain", flat::FlatProblem)
     println(io, "$FlatProblem()")
-    println(io, "    var → $([nameof(v) for v in flat.var])")
-    println(io, "    data → $([nameof(d) for d in flat.data])")
-    println(io, "    func → $([nameof(f) for f in flat.func])")
-    println(io, "    problem → $([nameof(p) for p in flat.problem])")
-    print(io, "    group → $([g for g in keys(flat.group_names)])")
+    println(io, "    var → $(collect(keys(flat.var_names)))")
+    println(io, "    data → $(collect(keys(flat.data_names)))")
+    println(io, "    func → $(collect(keys(flat.func_names)))")
+    println(io, "    problem → $(collect(keys(flat.problem_names)))")
+    print(io, "    group → $(collect(keys(flat.group_names)))")
 end
 
 """
@@ -229,14 +248,21 @@ function flatten(problem::Problem)
     )
 end
 
+const NAME_SEP = "."
+
+# Problem of pointer chasing with nested problems (e.g., collocation problem embedded within a PO problem within a homoclinic problem)
+# Need to get requests for indices to pass
+
 function _flatten!(flat::FlatProblem, problem::Problem, basename)
+    basename_sep = (isempty(basename) || basename[end] == NAME_SEP) ? basename : basename * NAME_SEP
     push!(flat.problem, problem)
+    flat.problem_names[basename] = lastindex(flat.problem)
     # Iterate over the sub-problems (depth first)
     for subproblem in problem.problem
         if isempty(subproblem.name)
-            flatten!(flat, subproblem, basename)
+            _flatten!(flat, subproblem, basename)
         else
-            flatten!(flat, subproblem, basename * subproblem.name * ".")
+            _flatten!(flat, subproblem, basename_sep * subproblem.name)
         end
     end
     # Iterate over functions in the problem
@@ -246,7 +272,7 @@ function _flatten!(flat::FlatProblem, problem::Problem, basename)
             push!(flat.func, func)
             fidx = lastindex(flat.func)
             if !isempty(func.name)
-                fname = basename * func.name
+                fname = basename_sep * func.name
                 if haskey(flat.func_names, fname)
                     @warn "Duplicate Func name" fname func
                 else
@@ -271,7 +297,7 @@ function _flatten!(flat::FlatProblem, problem::Problem, basename)
                     push!(flat.var, var)
                     vidx = lastindex(flat.var)
                     if !isempty(var.name)
-                        vname = var.toplevel ? var.name : basename * var.name
+                        vname = var.toplevel ? var.name : basename_sep * var.name
                         if haskey(flat.var_names, vname)
                             @warn "Duplicate Var name" vname var
                         else
@@ -287,7 +313,7 @@ function _flatten!(flat::FlatProblem, problem::Problem, basename)
                     push!(flat.data, data)
                     didx = lastindex(flat.data)
                     if !isempty(data.name)
-                        dname = basename * data.name
+                        dname = basename_sep * data.name
                         if haskey(flat.data_names, dname)
                             @warn "Duplicate Data name" dname data
                         else
@@ -341,10 +367,33 @@ _gen_call_group(flat::FlatProblem, group::Symbol) =
     _gen_call_group(flat, flat.group_names[group])
 
 function _gen_call_owner(flat::FlatProblem)
-    func = :(function (signal, problem) end)
+    func = :(function (signal::Signal, problem) end)
     for problem in flat.problem
         if problem.owner !== nothing
-            push!(func.args[2].args, :($(problem.owner)(signal, problem)))
+            indices = Int64[]
+            for item in problem.owner_pass_indices
+                if item isa Var
+                    idx = findfirst(==(item), flat.var)
+                elseif item isa Data
+                    idx = findfirst(==(item), flat.data)
+                elseif item isa Func
+                    idx = findfirst(==(item), flat.func)
+                elseif item isa Problem
+                    idx = findfirst(==(item), flat.problem)
+                else
+                    idx = nothing
+                end
+                if idx === nothing
+                    throw(ErrorException("Requested item does not exist in the problem structure: $item"))
+                else
+                    push!(indices, idx)
+                end
+            end
+            if isempty(indices)
+                push!(func.args[2].args, :($(problem.owner)(signal, problem)))
+            else
+                push!(func.args[2].args, :($(problem.owner)(signal, problem, $((indices...,)))))
+            end
         end
     end
     push!(func.args[2].args, :nothing)

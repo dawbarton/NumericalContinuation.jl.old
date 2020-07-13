@@ -59,13 +59,36 @@ struct MonitorFunction{F}
     f::F
 end
 
-function (mfunc::MonitorFunction)(res, u, data::Tuple, prob...)
+# Slightly annoying special casing of the different combinations of inputs to account for
+# the fact that Tuples are unwrapped if they are singletons
+
+function (mfunc::MonitorFunction)(res, u::Tuple, data::Tuple, prob...)
     res[1] = mfunc.f(Base.tail(u), Base.tail(data), prob...) - (isempty(u[1]) ? data[1] : u[1][1])
     return
 end
 
-function (mfunc::MonitorFunction)(res, u, data::Tuple{<:Any}, prob...)
+function (mfunc::MonitorFunction)(res, u::Tuple{<:Any, <:Any}, data::Tuple, prob...)
+    res[1] = mfunc.f(u[2], Base.tail(data), prob...) - (isempty(u[1]) ? data[1] : u[1][1])
+    return
+end
+
+function (mfunc::MonitorFunction)(res, u::Tuple, data::Tuple{<:Any, <:Any}, prob...)
+    res[1] = mfunc.f(Base.tail(u), data[2], prob...) - (isempty(u[1]) ? data[1] : u[1][1])
+    return
+end
+
+function (mfunc::MonitorFunction)(res, u::Tuple{<:Any, <:Any}, data::Tuple{<:Any, <:Any}, prob...)
+    res[1] = mfunc.f(u[2], data[2], prob...) - (isempty(u[1]) ? data[1] : u[1][1])
+    return
+end
+
+function (mfunc::MonitorFunction)(res, u::Tuple, data::Tuple{<:Any}, prob...)
     res[1] = mfunc.f(Base.tail(u), prob...) - (isempty(u[1]) ? data[1] : u[1][1])
+    return
+end
+
+function (mfunc::MonitorFunction)(res, u::Tuple{<:Any, <:Any}, data::Tuple{<:Any}, prob...)
+    res[1] = mfunc.f(u[2], prob...) - (isempty(u[1]) ? data[1] : u[1][1])
     return
 end
 
@@ -77,4 +100,15 @@ function monitor_function(name, f, initial_value=nothing; active=false, group=:e
     push!(mfunc, var)
     push!(mfunc, data)
     return mfunc
+end
+
+function parameter(name, var; active=false, top_level=true, index=1)
+    let index=index
+        mfunc = monitor_function(name, u -> u[index]; active=active, top_level=top_level)
+    end
+    return push!(mfunc, var)
+end
+
+function parameters(names, var; kwargs...)
+    return [parameter(name, var; index=i, kwargs...) for (i, name) in enumerate(names)]
 end

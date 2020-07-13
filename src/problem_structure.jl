@@ -255,7 +255,7 @@ generated code for each function group.
 function flatten(problem::Problem)
     flat = FlatProblem()
     _flatten!(flat, problem, "")
-    call_group = NamedTuple{(flat.group_names..,)}((eval(_gen_call_group(flat, i)) for i in eachindex(flat.group)))
+    call_group = NamedTuple{(flat.group_names...,)}((eval(_gen_call_group(flat, i)) for i in eachindex(flat.group)))
     call_owner = eval(_gen_call_owner(flat))
     return FlatProblem(
         flat.var,

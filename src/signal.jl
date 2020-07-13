@@ -1,7 +1,7 @@
 """
 A signal type for indicating a particular signal should be processed.
 """
-struct Signal{S <: Symbol} end
+struct Signal{S} end
 @inline Signal(S::Symbol) = Signal{S}()
 
 """

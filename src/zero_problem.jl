@@ -43,11 +43,8 @@ function zero_problem(name::String, f, u0, p0; pnames=nothing)
     else
         f! = (res, u, p) -> res .= f(u, p)
     end
-    # Check for parameter names
-    _pnames = pnames !== nothing ? [string(pname) for pname in pnames] : ["p$i" for i in 1:length(p0)]
-    if length(_pnames) != length(p0)
-        throw(ArgumentError("Length of parameter vector does not match number of parameter names"))
-    end
+    # Generate parameter names
+    _pnames = par_names(p0, pnames)
     # Give the user-provided function the input expected
     U = u0 isa Number ? Number : Vector
     P = p0 isa Number ? Number : Vector

@@ -9,7 +9,10 @@ include("signal.jl")
 include("view_vector.jl")
 include("problem_structure.jl")
 include("monitor_function.jl")
-include("covering.jl")
+include("options.jl")
+include("closed_problem.jl")
+
+include("utils.jl")
 
 include("zero_problem.jl")
 

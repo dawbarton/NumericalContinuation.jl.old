@@ -1,196 +1,3 @@
-# A key principle in building up the problem structure is that there should be no mutable
-# state that gets modified during the continuation run. This means that things like the size
-# of (variable-size) variables is not included in the problem structure; fixed-size
-# variables can be determined using initial_u.
-
-# The key benefit of this principle is that it becomes possible to reuse a problem structure
-# multiple times and, possibly more importantly, it becomes impossible to corrupt the
-# problem structure during construction.
-
-export Var, Data, Func, Problem
-export get_problem, get_flatproblem
-
-"""
-An abstract representation of a continuation variable, that is, state that is continually
-updated during continuation.
-"""
-struct Var
-    name::String
-    initial_u::Any
-    initial_t::Any
-    top_level::Bool
-end
-Var(name, initial_u, initial_t = nothing) = Var(name, initial_u, initial_t, false)
-
-function Base.show(io::IO, mime::MIME"text/plain", var::Var)
-    println(io, "$Var($(var.name))")
-    println(io, "    initial_u → $(var.initial_u)")
-    print(io, "    initial_t → $(var.initial_t)")
-end
-
-"""
-An abstract representation of continuation data, that is, information that may change
-between two continuation steps but not during a single continuation step.
-"""
-struct Data
-    name::String
-    initial_data::Any
-end
-
-function Base.show(io::IO, mime::MIME"text/plain", data::Data)
-    println(io, "$Data($(data.name))")
-    print(io, "    initial_data → $(data.initial_data)")
-end
-
-"""
-An abstract representation of a function of the form `f!(output, var, data)`.
-"""
-struct Func
-    name::String
-    func::Any
-    initial_f::Any
-    group::Vector{Symbol}
-    pass_problem::Bool
-    var::Vector{Var}
-    var_names::Dict{String,Int64}
-    data::Vector{Data}
-    data_names::Dict{String,Int64}
-end
-
-function Func(name, func, initial_f, group = [:embedded], pass_problem = false)
-    Func(
-        name,
-        func,
-        initial_f,
-        group,
-        pass_problem,
-        Var[],
-        Dict{String,Int64}(),
-        Data[],
-        Dict{String,Int64}(),
-    )
-end
-
-function Base.show(io::IO, mime::MIME"text/plain", func::Func)
-    println(io, "$Func($(func.name))")
-    println(io, "    initial_f → $(func.initial_f)")
-    println(io, "    group → $(func.group)")
-    println(io, "    pass_problem → $(func.pass_problem)")
-    println(io, "    var → $([nameof(v) for v in func.var])")
-    print(io, "    data → $([nameof(d) for d in func.data])")
-end
-
-"""
-Return the underlying problem tree structure.
-"""
-function get_problem end
-
-"""
-An abstract type for `Problem` owners to inherit from. (Inheriting is not required but
-reduces boilerplate.)
-"""
-abstract type ProblemOwner end
-
-(owner::ProblemOwner)(::Signal, problem, indices=nothing) = nothing  # fallback for signal handling
-
-"""
-An abstract representation of a continuation problem.
-"""
-struct Problem
-    name::String
-    func::Vector{Func}
-    func_names::Dict{String,Int64}
-    problem::Vector{Problem}
-    problem_names::Dict{String,Int64}
-    owner::Any
-    owner_pass_indices::Vector{Union{Var, Data, Func, Problem}}
-end
-
-const ProblemTypes = Union{Var, Data, Func, Problem}  # Cannot put this earlier because of type recursion issue
-
-Problem(name, owner = nothing) = Problem(
-    name,
-    Vector{Func}[],
-    Dict{String,Int64}(),
-    Problem[],
-    Dict{String,Int64}(),
-    owner,
-    ProblemTypes[],
-)
-
-function Base.show(io::IO, mime::MIME"text/plain", problem::Problem)
-    println(io, "$Problem($(problem.name))")
-    println(io, "    func → $([nameof(f) for f in problem.func])")
-    print(io, "    problem → $([nameof(p) for p in problem.problem])")
-end
-
-get_problem(problem::Problem) = problem
-
-"""
-Request that the indices of a particular item (Var, Data, Func, or Problem) are passed to
-the problem owner when signalled.
-"""
-function pass_indices!(problem::Problem, item::ProblemTypes)
-    push!(problem.owner_pass_indices, item)
-    return problem
-end
-
-# Generic functions for all collections
-for (Collection, Item, name) in (
-    (Func, Var, :var),
-    (Func, Data, :data),
-    (Problem, Func, :func),
-    (Problem, Problem, :problem),
-)
-    @eval function Base.push!(collection::$Collection, item::$Item)
-        if item in collection.$name
-            throw(ArgumentError(string($Item) * " already added: " * item.name))
-        else
-            push!(collection.$name, item)
-            if !isempty(item.name)
-                idx = lastindex(collection.$name)
-                if haskey(collection.$(Symbol(name, "_names")), item.name)
-                    @warn "Duplicate name" item.name item
-                else
-                    collection.$(Symbol(name, "_names"))[item.name] = idx
-                end
-            end
-        end
-        return collection
-    end
-
-    @eval function Base.getindex(
-        collection::$Collection,
-        ::Type{$Item},
-        item::AbstractString,
-    )
-        return collection.$name[collection.$(Symbol(name, "_names"))[item]]
-    end
-end
-
-for (Collection, names) in ((Func, (:var, :data)), (Problem, (:func, :problem)))
-    @eval function Base.getindex(collection::$Collection, item::AbstractString)
-        itempath = split(item, ".", limit = 2)
-        for subcollection in $names
-            names_dict = getfield(collection, Symbol(subcollection, "_names"))
-            if haskey(names_dict, itempath[1])
-                idx = names_dict[itempath[1]]
-                if length(itempath) == 1
-                    return getfield(collection, subcollection)[idx]
-                else
-                    return getfield(collection, subcollection)[idx][itempath[2]]
-                end
-            end
-        end
-        throw(KeyError(item))
-    end
-end
-
-for Item in (Var, Data, Func, Problem)
-    @eval Base.nameof(item::$Item) = item.name
-    @eval ownerof(item::$Item) = item.owner
-end
-
 """
 Return the underlying flattened problem structure (includes generated code).
 """
@@ -210,11 +17,12 @@ struct FlatProblem{G,O}
     group_names::Dict{Symbol,Int64}
     problem::Vector{Problem}
     problem_names::Dict{String,Int64}
+    mfuncs::MonitorFunctions
     call_group::G
     call_owner::O
 end
 
-FlatProblem() = FlatProblem(
+FlatProblem(mfuncs::MonitorFunctions) = FlatProblem(
     Var[],
     Dict{String,Int64}(),
     Data[],
@@ -225,6 +33,7 @@ FlatProblem() = FlatProblem(
     Dict{Symbol,Int64}(),
     Problem[],
     Dict{String,Int64}(),
+    mfuncs,
     nothing,
     nothing,
 )
@@ -238,14 +47,6 @@ function Base.show(io::IO, mime::MIME"text/plain", flat::FlatProblem)
     print(io, "    group → $(collect(keys(flat.group_names)))")
 end
 
-function evaluate!(res, flat::FlatProblem, group::Symbol, u, data, problem)
-    flat.call_group[group](res, u, data, problem)
-end
-
-function signal!(flat::FlatProblem, signal::Signal, problem)
-    flat.call_owner(signal, problem)
-end
-
 get_flatproblem(flat::FlatProblem) = flat
 
 """
@@ -255,7 +56,7 @@ generated code for each function group.
 function flatten(problem::Problem)
     flat = FlatProblem()
     _flatten!(flat, problem, "")
-    call_group = NamedTuple{(flat.group_names..,)}((eval(_gen_call_group(flat, i)) for i in eachindex(flat.group)))
+    call_group = Tuple(eval(_gen_call_group(flat, i)) for i in eachindex(flat.group))
     call_owner = eval(_gen_call_owner(flat))
     return FlatProblem(
         flat.var,
@@ -268,6 +69,7 @@ function flatten(problem::Problem)
         flat.group_names,
         flat.problem,
         flat.problem_names,
+        flat.mfuncs,
         call_group,
         call_owner,
     )

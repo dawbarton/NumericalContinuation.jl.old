@@ -16,14 +16,16 @@ updated during continuation.
 """
 struct Var
     name::String
+    initial_dim::Int64
     initial_u::Any
     initial_t::Any
     top_level::Bool
 end
-Var(name, initial_u, initial_t = nothing) = Var(name, initial_u, initial_t, false)
+Var(name; initial_u=nothing, initial_t=nothing, initial_dim=length(initial_u), top_level=false) = Var(name, initial_dim, initial_u, initial_t, top_level)
 
 function Base.show(io::IO, mime::MIME"text/plain", var::Var)
     println(io, "$Var($(var.name))")
+    println(io, "    initial_dim → $(var.initial_dim)")
     println(io, "    initial_u → $(var.initial_u)")
     print(io, "    initial_t → $(var.initial_t)")
 end
@@ -48,6 +50,7 @@ An abstract representation of a function of the form `f!(output, var, data)`.
 struct Func
     name::String
     func::Any
+    initial_dim::Int64
     initial_f::Any
     group::Vector{Symbol}
     pass_problem::Bool
@@ -57,10 +60,11 @@ struct Func
     data_names::Dict{String,Int64}
 end
 
-function Func(name, func, initial_f, group = [:embedded], pass_problem = false)
+function Func(name, func; initial_f=nothing, initial_dim=length(initial_f), group = [:embedded], pass_problem = false)
     Func(
         name,
         func,
+        initial_dim,
         initial_f,
         group,
         pass_problem,
@@ -73,6 +77,7 @@ end
 
 function Base.show(io::IO, mime::MIME"text/plain", func::Func)
     println(io, "$Func($(func.name))")
+    println(io, "    initial_dim → $(func.initial_dim)")
     println(io, "    initial_f → $(func.initial_f)")
     println(io, "    group → $(func.group)")
     println(io, "    pass_problem → $(func.pass_problem)")

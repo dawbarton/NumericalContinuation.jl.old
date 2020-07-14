@@ -63,40 +63,40 @@ end
 # the fact that Tuples are unwrapped if they are singletons
 
 function (mfunc::MonitorFunction)(res, u::Tuple, data::Tuple, prob...)
-    res[1] = mfunc.f(Base.tail(u), Base.tail(data), prob...) - (isempty(u[1]) ? data[1] : u[1][1])
+    res[1] = mfunc.f(Base.tail(u), Base.tail(data), prob...) - (isempty(u[1]) ? data[1][] : u[1][1])
     return
 end
 
 function (mfunc::MonitorFunction)(res, u::Tuple{<:Any, <:Any}, data::Tuple, prob...)
-    res[1] = mfunc.f(u[2], Base.tail(data), prob...) - (isempty(u[1]) ? data[1] : u[1][1])
+    res[1] = mfunc.f(u[2], Base.tail(data), prob...) - (isempty(u[1]) ? data[1][] : u[1][1])
     return
 end
 
 function (mfunc::MonitorFunction)(res, u::Tuple, data::Tuple{<:Any, <:Any}, prob...)
-    res[1] = mfunc.f(Base.tail(u), data[2], prob...) - (isempty(u[1]) ? data[1] : u[1][1])
+    res[1] = mfunc.f(Base.tail(u), data[2], prob...) - (isempty(u[1]) ? data[1][] : u[1][1])
     return
 end
 
 function (mfunc::MonitorFunction)(res, u::Tuple{<:Any, <:Any}, data::Tuple{<:Any, <:Any}, prob...)
-    res[1] = mfunc.f(u[2], data[2], prob...) - (isempty(u[1]) ? data[1] : u[1][1])
+    res[1] = mfunc.f(u[2], data[2], prob...) - (isempty(u[1]) ? data[1][] : u[1][1])
     return
 end
 
 function (mfunc::MonitorFunction)(res, u::Tuple, data::Tuple{<:Any}, prob...)
-    res[1] = mfunc.f(Base.tail(u), prob...) - (isempty(u[1]) ? data[1] : u[1][1])
+    res[1] = mfunc.f(Base.tail(u), prob...) - (isempty(u[1]) ? data[] : u[1][1])
     return
 end
 
 function (mfunc::MonitorFunction)(res, u::Tuple{<:Any, <:Any}, data::Tuple{<:Any}, prob...)
-    res[1] = mfunc.f(u[2], prob...) - (isempty(u[1]) ? data[1] : u[1][1])
+    res[1] = mfunc.f(u[2], prob...) - (isempty(u[1]) ? data[] : u[1][1])
     return
 end
 
-function monitor_function(name, f, initial_value=nothing; active=false, group=:embedded, pass_problem=false, top_level=true)
-    var = Var(name, (active ? [initial_value] : []), nothing, top_level)  # TODO: fix size/nothing/etc
+function monitor_function(name, f; initial_value=nothing, active=false, group=:embedded, pass_problem=false, top_level=true)
+    var = Var(name; initial_dim = (active ? 1 : 0), initial_u=initial_value, top_level=top_level)
     data = Data("mfunc_data", Ref(initial_value))
     fullgroup = (group isa Symbol ? push! : append!)([:mfunc], group)
-    mfunc = Func(name, f, nothing, fullgroup, pass_problem)
+    mfunc = Func(name, f; initial_dim=1, group=fullgroup, pass_problem=pass_problem)
     push!(mfunc, var)
     push!(mfunc, data)
     return mfunc

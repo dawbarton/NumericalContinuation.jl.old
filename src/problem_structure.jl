@@ -68,13 +68,15 @@ end
 
 function Func(
     name,
-    func;
+    func,
+    var = (),
+    data = ();
     initial_f = nothing,
     initial_dim = length(initial_f),
     group = [:embedded],
     pass_problem = false,
 )
-    Func(
+    f = Func(
         name,
         func,
         initial_dim,
@@ -86,6 +88,13 @@ function Func(
         Data[],
         Dict{String,Int64}(),
     )
+    for v in var
+        push!(f, v)
+    end
+    for d in data
+        push!(f, d)
+    end
+    return f
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", func::Func)
@@ -126,15 +135,24 @@ end
 
 const ProblemTypes = Union{Var,Data,Func,Problem}  # Cannot put this earlier because of type recursion issue
 
-Problem(name, owner = nothing) = Problem(
-    name,
-    Vector{Func}[],
-    Dict{String,Int64}(),
-    Problem[],
-    Dict{String,Int64}(),
-    owner,
-    ProblemTypes[],
-)
+function Problem(name, owner = nothing, func = (), problem = ())
+    prob = Problem(
+        name,
+        Vector{Func}[],
+        Dict{String,Int64}(),
+        Problem[],
+        Dict{String,Int64}(),
+        owner,
+        ProblemTypes[],
+    )
+    for f in func
+        push!(prob, f)
+    end
+    for p in problem
+        push!(prob, p)
+    end
+    return prob
+end
 
 function Base.show(io::IO, mime::MIME"text/plain", problem::Problem)
     println(io, "$Problem($(problem.name))")
@@ -274,6 +292,7 @@ function signal!(flat::FlatProblem, signal::Signal, problem)
     flat.call_owner(signal, problem)
 end
 
+get_problem(flat::FlatProblem) = flat.problem[1]
 get_flatproblem(flat::FlatProblem) = flat
 
 """
@@ -306,78 +325,79 @@ end
 const NAME_SEP = "."
 
 function _flatten!(flat::FlatProblem, problem::Problem, basename)
-    basename_sep =
-        (isempty(basename) || basename[end] == NAME_SEP) ? basename : basename * NAME_SEP
-    push!(flat.problem, problem)
-    flat.problem_names[basename] = lastindex(flat.problem)
-    # Iterate over the sub-problems (depth first)
-    for subproblem in problem.problem
-        if isempty(subproblem.name)
-            _flatten!(flat, subproblem, basename)
-        else
-            _flatten!(flat, subproblem, basename_sep * subproblem.name)
+    if !(problem in flat.problem)
+        push!(flat.problem, problem)
+        pidx = lastindex(flat.problem)
+        basename *= problem.name
+        haskey(flat.problem_names, basename) && @warn "Duplicate Problem name" basename problem
+        flat.problem_names[basename] = pidx
+        # Iterate over the sub-problems (depth first)
+        for subproblem in problem.problem
+            _flatten!(flat, subproblem, basename * NAME_SEP)
         end
+        # Iterate over functions in the problem
+        for func in problem.func
+            _flatten!(flat, func, basename * NAME_SEP)
+        end
+    else
+        throw(ErrorException("Duplicate Problem within the problem structure"))
     end
-    # Iterate over functions in the problem
-    for func in problem.func
-        if !(func in flat.func)
-            # Func has not been previously added, so add it
-            push!(flat.func, func)
-            fidx = lastindex(flat.func)
-            if !isempty(func.name)
-                fname = basename_sep * func.name
-                if haskey(flat.func_names, fname)
-                    @warn "Duplicate Func name" fname func
-                else
-                    flat.func_names[fname] = fidx
-                end
+    return flat
+end
+
+function _flatten!(flat::FlatProblem, func::Func, basename)
+    if !(func in flat.func)
+        # Func has not been previously added, so add it
+        push!(flat.func, func)
+        fidx = lastindex(flat.func)
+        basename *= func.name
+        haskey(flat.func_names, basename) && @warn "Duplicate Func name" basename func
+        flat.func_names[basename] = fidx
+        # Iterate over the groups the Func belongs to
+        for group in func.group
+            if !haskey(flat.group_names, group)
+                push!(flat.group, Func[])
+                gidx = lastindex(flat.group)
+                flat.group_names[group] = gidx
+            else
+                gidx = flat.group_names[group]
             end
-            # Iterate over the groups the Func belongs to
-            for group in func.group
-                if !haskey(flat.group_names, group)
-                    push!(flat.group, Func[])
-                    gidx = lastindex(flat.group)
-                    flat.group_names[group] = gidx
-                else
-                    gidx = flat.group_names[group]
-                end
-                push!(flat.group[gidx], func)
-            end
-            # Iterate over the Vars belonging to the Func
-            for var in func.var
-                if !(var in flat.var)
-                    # Var has not been previously added, so add it
-                    push!(flat.var, var)
-                    vidx = lastindex(flat.var)
-                    if !isempty(var.name)
-                        vname = var.top_level ? var.name : basename_sep * var.name
-                        if haskey(flat.var_names, vname)
-                            @warn "Duplicate Var name" vname var
-                        else
-                            flat.var_names[vname] = vidx
-                        end
-                    end
-                end
-            end
-            # Iterate over the Data belonging to the Func
-            for data in func.data
-                if !(data in flat.data)
-                    # Data has not been previously added, so add it
-                    push!(flat.data, data)
-                    didx = lastindex(flat.data)
-                    if !isempty(data.name)
-                        dname = basename_sep * data.name
-                        if haskey(flat.data_names, dname)
-                            @warn "Duplicate Data name" dname data
-                        else
-                            flat.data_names[dname] = didx
-                        end
-                    end
-                end
-            end
-        else
-            throw(ErrorException("Duplicate Func within the problem structure"))
+            push!(flat.group[gidx], func)
         end
+        # Iterate over the Vars belonging to the Func
+        for var in func.var
+            _flatten!(flat, var, basename * NAME_SEP)
+        end
+        # Iterate over the Data belonging to the Func
+        for data in func.data
+            _flatten!(flat, data, basename * NAME_SEP)
+        end
+    else
+        throw(ErrorException("Duplicate Func within the problem structure"))
+    end
+    return flat
+end
+
+function _flatten!(flat::FlatProblem, var::Var, basename)
+    if !(var in flat.var)
+        # Not been previously added, so add it
+        push!(flat.var, var)
+        idx = lastindex(flat.var)
+        basename = var.top_level ? var.name : basename * var.name
+        haskey(flat.var_names, basename) && @warn "Duplicate Var name" basename var
+        flat.var_names[basename] = idx
+    end
+    return flat
+end
+
+function _flatten!(flat::FlatProblem, data::Data, basename)
+    if !(data in flat.data)
+        # Not been previously added, so add it
+        push!(flat.data, data)
+        idx = lastindex(flat.data)
+        basename *= data.name
+        haskey(flat.data_names, basename) && @warn "Duplicate Data name" basename data
+        flat.data_names[basename] = idx
     end
     return flat
 end
@@ -392,7 +412,7 @@ function _gen_call_group(flat::FlatProblem, group::Integer)
             push!(u.args, :(u[$idx]))
         end
         if length(u.args) == 0
-            push!(func_f.args, :(u[:]))
+            push!(func_f.args, :(u[:]))  # TODO: this won't work for monitor functions that require the entire state
         elseif length(u.args) == 1
             push!(func_f.args, u.args[1])
         else

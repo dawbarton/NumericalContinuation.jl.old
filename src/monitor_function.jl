@@ -9,8 +9,9 @@ struct MonitorFunctions
     idx_var::Vector{Int64}
     idx_data::Vector{Int64}
     idx_func::Vector{Int64}
+    name::Dict{String, Int64}
 end
-MonitorFunctions() = MonitorFunctions(Func[], Bool[], Int64[], Int64[], Int64[])
+MonitorFunctions() = MonitorFunctions(Func[], Bool[], Int64[], Int64[], Int64[], Dict{String, Int64}())
 
 function (mfuncs::MonitorFunctions)(::Signal{:post_correct}, problem)
     # Store the var value in data (if var is non-empty)
@@ -37,6 +38,7 @@ function init!(mfuncs::MonitorFunctions, problem)
             push!(mfuncs.idx_var, idx_var)
             push!(mfuncs.idx_data, idx_data)
             push!(mfuncs.idx_func, idx_func)
+            mfuncs.name[first(k for (k, v) in flat.var_names if v == idx_var)] = lastindex(mfuncs.func)
         end
     end
 end
@@ -100,34 +102,32 @@ end
 
 function monitor_function(
     name,
-    f;
+    f,
+    var = (),
+    data = ();
     initial_value = nothing,
     active = false,
     group = :embedded,
     pass_problem = false,
     top_level = true,
 )
-    var = Var(
+    mvar = Var(
         name;
         initial_dim = (active ? 1 : 0),
         initial_u = initial_value,
         top_level = top_level,
     )
-    data = Data("mfunc_data", Ref(initial_value))
+    mdata = Data("mfunc_data", Ref(initial_value))
     fullgroup = (group isa Symbol ? push! : append!)([:mfunc], group)
-    mfunc = Func(name, f; initial_dim = 1, group = fullgroup, pass_problem = pass_problem)
-    push!(mfunc, var)
-    push!(mfunc, data)
-    return mfunc
+    return Func(name, f, (mvar, var...), (mdata, data...); initial_dim = 1, group = fullgroup, pass_problem = pass_problem)
 end
 
 function parameter(name, var; active = false, top_level = true, index = 1)
     local mfunc
     let index = index
         mfunc =
-            monitor_function(name, u -> u[index]; active = active, top_level = top_level)
+            monitor_function(name, u -> u[index], (var,); active = active, top_level = top_level)
     end
-    return push!(mfunc, var)
 end
 
 function parameters(names, var; kwargs...)

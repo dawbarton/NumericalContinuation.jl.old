@@ -31,6 +31,7 @@ function fourier_collocation(
     u0,
     p0;
     pnames = nothing,
+    top_level = true,
     phase = true,
     fix_t0 = true,
     fix_t1 = false,
@@ -54,12 +55,10 @@ function fourier_collocation(
     p = Var("p", initial_u = p0)
     t = Var("t", initial_u = t0)
     coll = Data("coll", (n_mesh = size(u0, 2), D = D, Du = Du))
-    func = Func("f", FourierColl(f!, size(u0, 1)), initial_dim = length(u0))
-    append!(func, (u, p, t))
-    push!(func, coll)
+    func = Func("f", FourierColl(f!, size(u0, 1)), (u, p, t), (coll,), initial_dim = length(u0))
     push!(problem, func)
     # Continuation parameters
-    append!(problem, parameters(_pnames, p))
+    append!(problem, parameters(_pnames, p, top_level = top_level))
     push!(problem, parameter("t0", t, index = 1, active = !fix_t0, top_level = false))
     push!(problem, parameter("t1", t, index = 2, active = !fix_t1, top_level = false))
     return problem

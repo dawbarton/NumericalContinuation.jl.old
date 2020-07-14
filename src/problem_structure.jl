@@ -8,7 +8,7 @@
 # problem structure during construction.
 
 export Var, Data, Func, Problem
-export get_problem, get_flatproblem
+export glue, get_problem, get_flatproblem
 
 """
 An abstract representation of a continuation variable, that is, state that is continually
@@ -105,6 +105,13 @@ function Base.show(io::IO, mime::MIME"text/plain", func::Func)
     println(io, "    pass_problem → $(func.pass_problem)")
     println(io, "    var → $([nameof(v) for v in func.var])")
     print(io, "    data → $([nameof(d) for d in func.data])")
+end
+
+function glue(var1::Var, var2::Var)
+    if var1.initial_dim != var2.initial_dim
+        throw(ArgumentError("Size mismatch between var1 and var2"))
+    end
+    return Func(var1.name*"="*var2.name, (res, u) -> res .= u[1] .- u[2], (var1, var2); initial_dim = var1.initial_dim)
 end
 
 """

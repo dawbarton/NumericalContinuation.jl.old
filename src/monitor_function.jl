@@ -1,4 +1,4 @@
-export monitor_functions, monitor_function
+export monitor_functions, monitor_function, get_active, set_active!
 
 """
 A problem structure to contain monitor functions.
@@ -27,17 +27,16 @@ end
 
 function init!(mfuncs::MonitorFunctions, problem)
     flat = get_flatproblem(problem)
-    mfuncs.func
     # Find all monitor functions and store their locations
     for (i, func) in pairs(flat.func)
         if func.func isa MonitorFunction
             idx_var = findfirst(==(func.var[1]), flat.var)
             idx_data = findfirst(==(func.data[1]), flat.data)
             push!(mfuncs.func, func)
-            push!(mfuncs.active, !isempty(func.var[1].initial_value))
+            push!(mfuncs.active, func.func.active[])
             push!(mfuncs.idx_var, idx_var)
             push!(mfuncs.idx_data, idx_data)
-            push!(mfuncs.idx_func, idx_func)
+            push!(mfuncs.idx_func, i)
             mfuncs.name[first(k for (k, v) in flat.var_names if v == idx_var)] = lastindex(mfuncs.func)
         end
     end
@@ -58,6 +57,7 @@ An individual monitor function.
 """
 struct MonitorFunction{F}
     f::F
+    active::Base.RefValue{Bool}
 end
 
 # Slightly annoying special casing of the different combinations of inputs to account for
@@ -113,13 +113,13 @@ function monitor_function(
 )
     mvar = Var(
         name;
-        initial_dim = (active ? 1 : 0),
+        initial_dim = 1,
         initial_u = initial_value,
         top_level = top_level,
     )
     mdata = Data("mfunc_data", Ref(initial_value))
     fullgroup = (group isa Symbol ? push! : append!)([:mfunc], group)
-    return Func(name, f, (mvar, var...), (mdata, data...); initial_dim = 1, group = fullgroup, pass_problem = pass_problem)
+    return Func(name, MonitorFunction(f, Ref(active)), (mvar, var...), (mdata, data...); initial_dim = 1, group = fullgroup, pass_problem = pass_problem)
 end
 
 function parameter(name, var; active = false, top_level = true, index = 1)
@@ -132,4 +132,27 @@ end
 
 function parameters(names, var; kwargs...)
     return [parameter(name, var; index = i, kwargs...) for (i, name) in enumerate(names)]
+end
+
+"""
+Set a monitor function active or inactive. Only used during the creation of the problem
+structure; once the continuation problem is closed, changing this has no effect.
+"""
+function set_active!(mfunc::Func, active::Bool)
+    if mfunc.func isa MonitorFunction
+        mfunc.func.active[] = active
+    else
+        throw(ArgumentError("Func provided is not a MonitorFunction"))
+    end
+end
+
+"""
+Return whether a monitor function is active (able to change value) or not.
+"""
+function get_active(mfunc::Func)
+    if mfunc.func isa MonitorFunction
+        return mfunc.func.active[]
+    else
+        throw(ArgumentError("Func provided is not a MonitorFunction"))
+    end
 end

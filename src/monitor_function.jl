@@ -122,6 +122,7 @@ function monitor_function(
 end
 
 function parameter(name, var; active = false, top_level = true, index = 1)
+    local mfunc
     let index = index
         mfunc =
             monitor_function(name, u -> u[index]; active = active, top_level = top_level)

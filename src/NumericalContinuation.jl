@@ -16,4 +16,6 @@ include("utils.jl")
 
 include("zero_problem.jl")
 
+include("FourierCollocation.jl")
+
 end # module

@@ -44,15 +44,15 @@ function zero_problem(name::String, f, u0, p0; pnames = nothing)
         f! = (res, u, p) -> res .= f(u, p)
     end
     # Generate parameter names
-    _pnames = par_names(p0, pnames)
+    _pnames = parameter_names(p0, pnames)
     # Give the user-provided function the input expected
     U = u0 isa Number ? Number : Vector
     P = p0 isa Number ? Number : Vector
     alg = ZeroFunc{U,P,typeof(f!)}(f!)
     # Create the necessary continuation variables and add the function
-    u = Var("u", (U === Number ? [u0] : u0))
-    p = Var("p", (P === Number ? [p0] : p0))
-    func = Func("f", alg, length(u0))
+    u = Var("u", initial_u = (U === Number ? [u0] : u0))
+    p = Var("p", initial_u = (P === Number ? [p0] : p0))
+    func = Func("f", alg, initial_dim = length(u0))
     push!(func, u)
     push!(func, p)
     # TODO: Should also add the parameters as monitor functions

@@ -1,13 +1,18 @@
 module FourierCollocation
 
-struct FourierCollocation{F}
+using ..NumericalContinuation: Var, Data, Func, Problem
+using ..NumericalContinuation: parameter, parameters, parameter_names
+
+export fourier_collocation
+
+struct FourierColl{F}
     f!::F
     n_dim::Int64
 end
 
-# TODO: allow for out-of-place functions (parameterise FourierCollocation further?)
+# TODO: allow for out-of-place functions (parameterise FourierColl further?)
 
-function (fourier::FourierCollocation)(res, (u, p, t), data)
+function (fourier::FourierColl)(res, (u, p, t), data)
     mul!(data.Du, reshape(u, (fourier.n_dim, data.n_mesh)), data.D)
     ii = 1:fourier.n_dim
     T = t[2] - t[1]
@@ -21,7 +26,7 @@ end
 
 function fourier_collocation(
     name::String,
-    f,
+    f!,
     trange,
     u0,
     p0;
@@ -38,18 +43,18 @@ function fourier_collocation(
         throw(ArgumentError("Expected trange to contain start and end times only"))
     end
     # Generate parameter names
-    _pnames = par_names(p0, pnames)
+    _pnames = parameter_names(p0, pnames)
     # Create the continuation problem
     problem = Problem(name)
     # Create differentiation matrix and temporary storage to avoid allocations
     D = -fourier_diff(eltype(u0), size(u0, 2)) * 2π
     Du = similar(u0)
     # Create the necessary continuation variables and add the function
-    u = Var("u", vec(u0))
-    p = Var("p", p0)
-    t = Var("t", t0)
+    u = Var("u", initial_u = vec(u0))
+    p = Var("p", initial_u = p0)
+    t = Var("t", initial_u = t0)
     coll = Data("coll", (n_mesh = size(u0, 2), D = D, Du = Du))
-    func = Func("f", FourierCollocation(f!, size(u0, 1)), length(u0))
+    func = Func("f", FourierColl(f!, size(u0, 1)), initial_dim = length(u0))
     append!(func, (u, p, t))
     push!(func, coll)
     push!(problem, func)

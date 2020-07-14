@@ -177,6 +177,16 @@ for (Collection, Item, name) in (
         return collection
     end
 
+    @eval function Base.append!(
+        collection::$Collection,
+        items::Union{NTuple{<:Any,$Item},AbstractVector{$Item}},
+    )
+        for item in items
+            push!(collection, item)
+        end
+        return collection
+    end
+
     @eval function Base.getindex(
         collection::$Collection,
         ::Type{$Item},
@@ -273,7 +283,7 @@ generated code for each function group.
 function flatten(problem::Problem)
     flat = FlatProblem()
     _flatten!(flat, problem, "")
-    call_group = NamedTuple{(flat.group_names...,)}((
+    call_group = NamedTuple{(keys(flat.group_names)...,)}((
         eval(_gen_call_group(flat, i)) for i in eachindex(flat.group)
     ))
     call_owner = eval(_gen_call_owner(flat))

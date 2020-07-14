@@ -1,11 +1,11 @@
 """
 Return a list of parameter names based on user supplied values.
 """
-function par_names end
+function parameter_names end
 
-par_names(p, pnames::Nothing) = ["p$i" for i in eachindex(p)]
+parameter_names(p, pnames::Nothing) = ["p$i" for i in eachindex(p)]
 
-function par_names(p, pnames)
+function parameter_names(p, pnames)
     if length(p) == length(pnames)
         return [string(pname) for pname in pnames]
     else

@@ -41,13 +41,12 @@ function init!(mfuncs::MonitorFunctions, problem)
     end
 end
 
-function exchange_pars(flat::FlatProblem)
-end
+function exchange_pars(flat::FlatProblem) end
 
 """
 Create a problem structure to contain monitor functions
 """
-function monitor_functions(name="mfuncs")
+function monitor_functions(name = "mfuncs")
     problem = Problem(name, MonitorFunctions())
     return problem
 end
@@ -63,21 +62,28 @@ end
 # the fact that Tuples are unwrapped if they are singletons
 
 function (mfunc::MonitorFunction)(res, u::Tuple, data::Tuple, prob...)
-    res[1] = mfunc.f(Base.tail(u), Base.tail(data), prob...) - (isempty(u[1]) ? data[1][] : u[1][1])
+    res[1] =
+        mfunc.f(Base.tail(u), Base.tail(data), prob...) -
+        (isempty(u[1]) ? data[1][] : u[1][1])
     return
 end
 
-function (mfunc::MonitorFunction)(res, u::Tuple{<:Any, <:Any}, data::Tuple, prob...)
+function (mfunc::MonitorFunction)(res, u::Tuple{<:Any,<:Any}, data::Tuple, prob...)
     res[1] = mfunc.f(u[2], Base.tail(data), prob...) - (isempty(u[1]) ? data[1][] : u[1][1])
     return
 end
 
-function (mfunc::MonitorFunction)(res, u::Tuple, data::Tuple{<:Any, <:Any}, prob...)
+function (mfunc::MonitorFunction)(res, u::Tuple, data::Tuple{<:Any,<:Any}, prob...)
     res[1] = mfunc.f(Base.tail(u), data[2], prob...) - (isempty(u[1]) ? data[1][] : u[1][1])
     return
 end
 
-function (mfunc::MonitorFunction)(res, u::Tuple{<:Any, <:Any}, data::Tuple{<:Any, <:Any}, prob...)
+function (mfunc::MonitorFunction)(
+    res,
+    u::Tuple{<:Any,<:Any},
+    data::Tuple{<:Any,<:Any},
+    prob...,
+)
     res[1] = mfunc.f(u[2], data[2], prob...) - (isempty(u[1]) ? data[1][] : u[1][1])
     return
 end
@@ -87,28 +93,42 @@ function (mfunc::MonitorFunction)(res, u::Tuple, data::Tuple{<:Any}, prob...)
     return
 end
 
-function (mfunc::MonitorFunction)(res, u::Tuple{<:Any, <:Any}, data::Tuple{<:Any}, prob...)
+function (mfunc::MonitorFunction)(res, u::Tuple{<:Any,<:Any}, data::Tuple{<:Any}, prob...)
     res[1] = mfunc.f(u[2], prob...) - (isempty(u[1]) ? data[] : u[1][1])
     return
 end
 
-function monitor_function(name, f; initial_value=nothing, active=false, group=:embedded, pass_problem=false, top_level=true)
-    var = Var(name; initial_dim = (active ? 1 : 0), initial_u=initial_value, top_level=top_level)
+function monitor_function(
+    name,
+    f;
+    initial_value = nothing,
+    active = false,
+    group = :embedded,
+    pass_problem = false,
+    top_level = true,
+)
+    var = Var(
+        name;
+        initial_dim = (active ? 1 : 0),
+        initial_u = initial_value,
+        top_level = top_level,
+    )
     data = Data("mfunc_data", Ref(initial_value))
     fullgroup = (group isa Symbol ? push! : append!)([:mfunc], group)
-    mfunc = Func(name, f; initial_dim=1, group=fullgroup, pass_problem=pass_problem)
+    mfunc = Func(name, f; initial_dim = 1, group = fullgroup, pass_problem = pass_problem)
     push!(mfunc, var)
     push!(mfunc, data)
     return mfunc
 end
 
-function parameter(name, var; active=false, top_level=true, index=1)
-    let index=index
-        mfunc = monitor_function(name, u -> u[index]; active=active, top_level=top_level)
+function parameter(name, var; active = false, top_level = true, index = 1)
+    let index = index
+        mfunc =
+            monitor_function(name, u -> u[index]; active = active, top_level = top_level)
     end
     return push!(mfunc, var)
 end
 
 function parameters(names, var; kwargs...)
-    return [parameter(name, var; index=i, kwargs...) for (i, name) in enumerate(names)]
+    return [parameter(name, var; index = i, kwargs...) for (i, name) in enumerate(names)]
 end

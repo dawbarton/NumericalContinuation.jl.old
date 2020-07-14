@@ -78,7 +78,8 @@ end
 const NAME_SEP = "."
 
 function _flatten!(flat::FlatProblem, problem::Problem, basename)
-    basename_sep = (isempty(basename) || basename[end] == NAME_SEP) ? basename : basename * NAME_SEP
+    basename_sep =
+        (isempty(basename) || basename[end] == NAME_SEP) ? basename : basename * NAME_SEP
     push!(flat.problem, problem)
     flat.problem_names[basename] = lastindex(flat.problem)
     # Iterate over the sub-problems (depth first)
@@ -220,7 +221,10 @@ function _gen_call_owner(flat::FlatProblem)
             if isempty(indices)
                 push!(func.args[2].args, :($(problem.owner)(signal, problem)))
             else
-                push!(func.args[2].args, :($(problem.owner)(signal, problem, $((indices...,)))))
+                push!(
+                    func.args[2].args,
+                    :($(problem.owner)(signal, problem, $((indices...,)))),
+                )
             end
         end
     end

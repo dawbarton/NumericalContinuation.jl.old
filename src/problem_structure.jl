@@ -21,7 +21,13 @@ struct Var
     initial_t::Any
     top_level::Bool
 end
-Var(name; initial_u=nothing, initial_t=nothing, initial_dim=length(initial_u), top_level=false) = Var(name, initial_dim, initial_u, initial_t, top_level)
+Var(
+    name;
+    initial_u = nothing,
+    initial_t = nothing,
+    initial_dim = length(initial_u),
+    top_level = false,
+) = Var(name, initial_dim, initial_u, initial_t, top_level)
 
 function Base.show(io::IO, mime::MIME"text/plain", var::Var)
     println(io, "$Var($(var.name))")
@@ -60,7 +66,14 @@ struct Func
     data_names::Dict{String,Int64}
 end
 
-function Func(name, func; initial_f=nothing, initial_dim=length(initial_f), group = [:embedded], pass_problem = false)
+function Func(
+    name,
+    func;
+    initial_f = nothing,
+    initial_dim = length(initial_f),
+    group = [:embedded],
+    pass_problem = false,
+)
     Func(
         name,
         func,
@@ -96,7 +109,7 @@ reduces boilerplate.)
 """
 abstract type ProblemOwner end
 
-(owner::ProblemOwner)(::Signal, problem, indices=nothing) = nothing  # fallback for signal handling
+(owner::ProblemOwner)(::Signal, problem, indices = nothing) = nothing  # fallback for signal handling
 
 """
 An abstract representation of a continuation problem.
@@ -108,10 +121,10 @@ struct Problem
     problem::Vector{Problem}
     problem_names::Dict{String,Int64}
     owner::Any
-    owner_pass_indices::Vector{Union{Var, Data, Func, Problem}}
+    owner_pass_indices::Vector{Union{Var,Data,Func,Problem}}
 end
 
-const ProblemTypes = Union{Var, Data, Func, Problem}  # Cannot put this earlier because of type recursion issue
+const ProblemTypes = Union{Var,Data,Func,Problem}  # Cannot put this earlier because of type recursion issue
 
 Problem(name, owner = nothing) = Problem(
     name,
@@ -260,7 +273,9 @@ generated code for each function group.
 function flatten(problem::Problem)
     flat = FlatProblem()
     _flatten!(flat, problem, "")
-    call_group = NamedTuple{(flat.group_names...,)}((eval(_gen_call_group(flat, i)) for i in eachindex(flat.group)))
+    call_group = NamedTuple{(flat.group_names...,)}((
+        eval(_gen_call_group(flat, i)) for i in eachindex(flat.group)
+    ))
     call_owner = eval(_gen_call_owner(flat))
     return FlatProblem(
         flat.var,
@@ -281,7 +296,8 @@ end
 const NAME_SEP = "."
 
 function _flatten!(flat::FlatProblem, problem::Problem, basename)
-    basename_sep = (isempty(basename) || basename[end] == NAME_SEP) ? basename : basename * NAME_SEP
+    basename_sep =
+        (isempty(basename) || basename[end] == NAME_SEP) ? basename : basename * NAME_SEP
     push!(flat.problem, problem)
     flat.problem_names[basename] = lastindex(flat.problem)
     # Iterate over the sub-problems (depth first)
@@ -423,7 +439,10 @@ function _gen_call_owner(flat::FlatProblem)
             if isempty(indices)
                 push!(func.args[2].args, :($(problem.owner)(signal, problem)))
             else
-                push!(func.args[2].args, :($(problem.owner)(signal, problem, $((indices...,)))))
+                push!(
+                    func.args[2].args,
+                    :($(problem.owner)(signal, problem, $((indices...,)))),
+                )
             end
         end
     end

@@ -1,13 +1,13 @@
 export zero_problem
 
-struct ZeroFunc{U, P, F}
+struct ZeroFunc{U,P,F}
     f!::F
 end
 
 _lift(T, val) = val
 _lift(::Type{<:Number}, val) = val[1]
 
-(af::ZeroFunc{U, P})(res, (u, p)) where {U, P} = af.f!(res, _lift(U, u), _lift(P, p))
+(af::ZeroFunc{U,P})(res, (u, p)) where {U,P} = af.f!(res, _lift(U, u), _lift(P, p))
 
 """
 Construct a zero problem of the form
@@ -36,7 +36,7 @@ dimension as `u`.
 prob = zero_problem("cubic", (u, p) -> u^3 - p, 1.5, 1)  # u0 = 1.5, p0 = 1
 ```
 """
-function zero_problem(name::String, f, u0, p0; pnames=nothing)
+function zero_problem(name::String, f, u0, p0; pnames = nothing)
     # Determine whether f is in-place or not
     if any(method.nargs == 4 for method in methods(f))
         f! = f
@@ -48,7 +48,7 @@ function zero_problem(name::String, f, u0, p0; pnames=nothing)
     # Give the user-provided function the input expected
     U = u0 isa Number ? Number : Vector
     P = p0 isa Number ? Number : Vector
-    alg = ZeroFunc{U, P, typeof(f!)}(f!)
+    alg = ZeroFunc{U,P,typeof(f!)}(f!)
     # Create the necessary continuation variables and add the function
     u = Var("u", (U === Number ? [u0] : u0))
     p = Var("p", (P === Number ? [p0] : p0))

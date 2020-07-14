@@ -6,7 +6,7 @@ struct ClosedProblem{C}  # TODO: it's not clear if this specialisation will help
     covering::C
 end
 
-function ClosedProblem(problem::Problem, options::Options, cover=DEFAULTCOVER)
+function ClosedProblem(problem::Problem, options::Options, cover = DEFAULTCOVER)
     top_level = Problem("")
     push!(top_level, problem)
     mfuncs_problem = monitor_functions()
@@ -32,11 +32,11 @@ function run!(closed::ClosedProblem, problem)
     signal!(closed, Signal(:post_run), problem)
 end
 
-signal!(closed::ClosedProblem, signal::Signal, problem) = signal!(closed.flat, signal, problem)
+signal!(closed::ClosedProblem, signal::Signal, problem) =
+    signal!(closed.flat, signal, problem)
 
 get_options(problem::ClosedProblem) = problem.options
 get_problem(problem::ClosedProblem) = problem.top_level
 get_flatproblem(problem::ClosedProblem) = problem.flat
 get_mfuncs(problem::ClosedProblem) = problem.mfuncs
 get_covering(problem::ClosedProblem) = problem.covering
-

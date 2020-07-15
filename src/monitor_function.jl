@@ -9,9 +9,10 @@ struct MonitorFunctions
     idx_var::Vector{Int64}
     idx_data::Vector{Int64}
     idx_func::Vector{Int64}
-    name::Dict{String, Int64}
+    name::Dict{String,Int64}
 end
-MonitorFunctions() = MonitorFunctions(Func[], Bool[], Int64[], Int64[], Int64[], Dict{String, Int64}())
+MonitorFunctions() =
+    MonitorFunctions(Func[], Bool[], Int64[], Int64[], Int64[], Dict{String,Int64}())
 
 function (mfuncs::MonitorFunctions)(::Signal{:post_correct}, problem)
     # Store the var value in data (if var is non-empty)
@@ -37,7 +38,8 @@ function init!(mfuncs::MonitorFunctions, problem)
             push!(mfuncs.idx_var, idx_var)
             push!(mfuncs.idx_data, idx_data)
             push!(mfuncs.idx_func, i)
-            mfuncs.name[first(k for (k, v) in flat.var_names if v == idx_var)] = lastindex(mfuncs.func)
+            mfuncs.name[first(k for (k, v) in flat.var_names if v == idx_var)] =
+                lastindex(mfuncs.func)
         end
     end
 end
@@ -111,22 +113,30 @@ function monitor_function(
     pass_problem = false,
     top_level = true,
 )
-    mvar = Var(
-        name;
-        initial_dim = 1,
-        initial_u = initial_value,
-        top_level = top_level,
-    )
+    mvar = Var(name; initial_dim = 1, initial_u = initial_value, top_level = top_level)
     mdata = Data("mfunc_data", Ref(initial_value))
     fullgroup = (group isa Symbol ? push! : append!)([:mfunc], group)
-    return Func(name, MonitorFunction(f, Ref(active)), (mvar, var...), (mdata, data...); initial_dim = 1, group = fullgroup, pass_problem = pass_problem)
+    return Func(
+        name,
+        MonitorFunction(f, Ref(active)),
+        (mvar, var...),
+        (mdata, data...);
+        initial_dim = 1,
+        group = fullgroup,
+        pass_problem = pass_problem,
+    )
 end
 
 function parameter(name, var; active = false, top_level = true, index = 1)
     local mfunc
     let index = index
-        mfunc =
-            monitor_function(name, u -> u[index], (var,); active = active, top_level = top_level)
+        mfunc = monitor_function(
+            name,
+            u -> u[index],
+            (var,);
+            active = active,
+            top_level = top_level,
+        )
     end
 end
 

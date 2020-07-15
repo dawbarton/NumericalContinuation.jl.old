@@ -55,7 +55,13 @@ function fourier_collocation(
     p = Var("p", initial_u = p0)
     t = Var("t", initial_u = t0)
     coll = Data("coll", (n_mesh = size(u0, 2), D = D, Du = Du))
-    func = Func("f", FourierColl(f!, size(u0, 1)), (u, p, t), (coll,), initial_dim = length(u0))
+    func = Func(
+        "f",
+        FourierColl(f!, size(u0, 1)),
+        (u, p, t),
+        (coll,),
+        initial_dim = length(u0),
+    )
     push!(problem, func)
     # Continuation parameters
     append!(problem, parameters(_pnames, p, top_level = top_level))

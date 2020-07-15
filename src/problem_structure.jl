@@ -111,7 +111,12 @@ function glue(var1::Var, var2::Var)
     if var1.initial_dim != var2.initial_dim
         throw(ArgumentError("Size mismatch between var1 and var2"))
     end
-    return Func(var1.name*"="*var2.name, (res, u) -> res .= u[1] .- u[2], (var1, var2); initial_dim = var1.initial_dim)
+    return Func(
+        var1.name * "=" * var2.name,
+        (res, u) -> res .= u[1] .- u[2],
+        (var1, var2);
+        initial_dim = var1.initial_dim,
+    )
 end
 
 """
@@ -336,7 +341,8 @@ function _flatten!(flat::FlatProblem, problem::Problem, basename)
         push!(flat.problem, problem)
         pidx = lastindex(flat.problem)
         basename *= problem.name
-        haskey(flat.problem_names, basename) && @warn "Duplicate Problem name" basename problem
+        haskey(flat.problem_names, basename) &&
+            @warn "Duplicate Problem name" basename problem
         flat.problem_names[basename] = pidx
         # Iterate over the sub-problems (depth first)
         for subproblem in problem.problem

@@ -300,8 +300,8 @@ function evaluate!(res, flat::FlatProblem, group::Symbol, u, data, problem)
     flat.call_group[group](res, u, data, problem)
 end
 
-function signal!(flat::FlatProblem, signal::Signal, problem)
-    flat.call_owner(signal, problem)
+function signal!(flat::FlatProblem, signal::Signal, args...)
+    flat.call_owner(signal, args...)
 end
 
 get_problem(flat::FlatProblem) = flat.problem[1]
@@ -453,7 +453,7 @@ _gen_call_group(flat::FlatProblem, group::Symbol) =
     _gen_call_group(flat, flat.group_names[group])
 
 function _gen_call_owner(flat::FlatProblem)
-    func = :(function (signal::Signal, problem) end)
+    func = :(function (signal::Signal, args...) end)
     for problem in flat.problem
         if problem.owner !== nothing
             indices = Int64[]
@@ -480,7 +480,7 @@ function _gen_call_owner(flat::FlatProblem)
             # example, we could have two covering algorithms that provide an adapt signal -
             # which function do you overload?
             if isempty(indices)
-                push!(func.args[2].args, :($(problem.owner)(signal, problem)))
+                push!(func.args[2].args, :($(problem.owner)(signal, args...)))
             else
                 push!(
                     func.args[2].args,

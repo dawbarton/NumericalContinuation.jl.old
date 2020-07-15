@@ -32,8 +32,8 @@ function run!(closed::ClosedProblem, problem)
     signal!(closed, Signal(:post_run), problem)
 end
 
-signal!(closed::ClosedProblem, signal::Signal, problem) =
-    signal!(closed.flat, signal, problem)
+signal!(closed::ClosedProblem, signal::Signal, args...) =
+    signal!(closed.flat, signal, args...)
 
 get_options(problem::ClosedProblem) = problem.options
 get_problem(problem::ClosedProblem) = problem.top_level

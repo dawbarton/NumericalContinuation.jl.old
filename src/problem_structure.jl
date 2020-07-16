@@ -11,6 +11,8 @@ export Var, Data, Func, Problem
 export glue, get_problem, get_flatproblem
 
 """
+    $(TYPEDEF)
+
 An abstract representation of a continuation variable, that is, state that is continually
 updated during continuation.
 """
@@ -37,6 +39,8 @@ function Base.show(io::IO, mime::MIME"text/plain", var::Var)
 end
 
 """
+    $(TYPEDEF)
+
 An abstract representation of continuation data, that is, information that may change
 between two continuation steps but not during a single continuation step.
 """
@@ -51,6 +55,8 @@ function Base.show(io::IO, mime::MIME"text/plain", data::Data)
 end
 
 """
+    $(TYPEDEF)
+
 An abstract representation of a function of the form `f!(output, var, data)`.
 """
 struct Func
@@ -125,6 +131,8 @@ Return the underlying problem tree structure.
 function get_problem end
 
 """
+    $(TYPEDEF)
+
 An abstract type for `Problem` owners to inherit from. (Inheriting is not required but
 reduces boilerplate.)
 """
@@ -133,6 +141,8 @@ abstract type ProblemOwner end
 (owner::ProblemOwner)(::Signal, problem, indices = nothing) = nothing  # fallback for signal handling
 
 """
+    $(TYPEDEF)
+
 An abstract representation of a continuation problem.
 """
 struct Problem
@@ -175,6 +185,8 @@ end
 get_problem(problem::Problem) = problem
 
 """
+    $(SIGNATURES)
+
 Request that the indices of a particular item (Var, Data, Func, or Problem) are passed to
 the problem owner when signalled.
 """
@@ -255,6 +267,8 @@ Return the underlying flattened problem structure (includes generated code).
 function get_flatproblem end
 
 """
+    $(TYPEDEF)
+
 A flattened representation of a continuation problem.
 """
 struct FlatProblem{G,O}
@@ -308,6 +322,8 @@ get_problem(flat::FlatProblem) = flat.problem[1]
 get_flatproblem(flat::FlatProblem) = flat
 
 """
+    $(SIGNATURES)
+
 Take a hierarchical `Problem` structure and return a flattened version that contains
 generated code for each function group.
 """

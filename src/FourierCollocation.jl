@@ -71,6 +71,8 @@ function fourier_collocation(
 end
 
 """
+    $(SIGNATURES)
+
 Create a Fourier differentiation matrix with numerical type T on the domain
 `x = range(0, 2π, length=N+1)[1:end-1]`.
 """

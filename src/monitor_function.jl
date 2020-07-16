@@ -1,6 +1,8 @@
 export monitor_functions, monitor_function, get_active, set_active!
 
 """
+    $(TYPEDEF)
+
 A problem structure to contain monitor functions.
 """
 struct MonitorFunctions
@@ -47,6 +49,8 @@ end
 function exchange_pars(flat::FlatProblem) end
 
 """
+    $(SIGNATURES)
+
 Create a problem structure to contain monitor functions
 """
 function monitor_functions(name = "mfuncs")
@@ -55,6 +59,8 @@ function monitor_functions(name = "mfuncs")
 end
 
 """
+    $(TYPEDEF)
+
 An individual monitor function.
 """
 struct MonitorFunction{F}
@@ -145,6 +151,8 @@ function parameters(names, var; kwargs...)
 end
 
 """
+    $(SIGNATURES)
+
 Set a monitor function active or inactive. Only used during the creation of the problem
 structure; once the continuation problem is closed, changing this has no effect.
 """
@@ -157,6 +165,8 @@ function set_active!(mfunc::Func, active::Bool)
 end
 
 """
+    $(SIGNATURES)
+
 Return whether a monitor function is active (able to change value) or not.
 """
 function get_active(mfunc::Func)

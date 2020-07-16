@@ -19,18 +19,21 @@ function ClosedProblem(problem::Problem, options::Options, cover = DEFAULTCOVER)
     closed = ClosedProblem(options, top_level, flat, mfuncs, covering)
 end
 
-function init!(closed::ClosedProblem, problem)
-    signal!(closed, Signal(:pre_init), problem)
-    init!(closed.mfuncs, problem)
-    init!(closed.covering, problem)
-    signal!(closed, Signal(:post_init), problem)
+function init!(closed::ClosedProblem)
+    signal!(Signal(:pre_init), closed)
+    init!(closed.mfuncs, closed)
+    init!(closed.covering, closed)
+    signal!(Signal(:post_init), closed)
 end
 
-function run!(closed::ClosedProblem, problem)
-    signal!(closed, Signal(:pre_run), problem)
-    run!(closed.covering, problem)
-    signal!(closed, Signal(:post_run), problem)
+function run!(closed::ClosedProblem)
+    signal!(Signal(:pre_run), closed)
+    run!(closed.covering, closed)
+    signal!(Signal(:post_run), closed)
 end
+
+signal!(signal::Signal, closed::ClosedProblem, args...) =
+    signal!(closed.flat, signal, closed, args...)
 
 signal!(closed::ClosedProblem, signal::Signal, args...) =
     signal!(closed.flat, signal, args...)

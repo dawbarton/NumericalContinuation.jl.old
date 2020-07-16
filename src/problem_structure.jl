@@ -318,6 +318,10 @@ function signal!(flat::FlatProblem, signal::Signal, args...)
     flat.call_owner(signal, args...)
 end
 
+function signal!(signal::Signal, flat::FlatProblem, args...)
+    flat.call_owner(signal, flat, args...)
+end
+
 get_problem(flat::FlatProblem) = flat.problem[1]
 get_flatproblem(flat::FlatProblem) = flat
 

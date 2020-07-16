@@ -504,7 +504,7 @@ function _gen_call_owner(flat::FlatProblem)
             else
                 push!(
                     func.args[2].args,
-                    :($(problem.owner)(signal, problem, $((indices...,)))),
+                    :($(problem.owner)(signal, $((indices...,)), args...)),
                 )
             end
         end

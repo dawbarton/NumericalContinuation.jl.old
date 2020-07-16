@@ -24,10 +24,27 @@ function signal! end
 """
     $(SIGNATURES)
 
-Return a list of documented signals.
+Return a list of documented signals. This may not be an exhaustive list of all possible
+signals.
 """
 function signals()
-    return [m.sig.parameters[2].parameters[1] for m in methods(signals) if ((m.nargs == 2) && (m.sig.parameters[2] <: Signal))]
+    signal = Symbol[]
+    for m in methods(signals)
+        if (m.nargs == 2) && (m.sig.parameters[2] <: Signal)
+            par = m.sig.parameters[2]
+            if par isa Union
+                while par.b isa Union
+                    push!(signal, par.a.parameters[1])
+                    par = par.b
+                end
+                push!(signal, par.a.parameters[1])
+                push!(signal, par.b.parameters[1])
+            else
+                push!(signal, par.parameters[1])
+            end
+        end
+    end
+    return signal
 end
 
 """
@@ -43,19 +60,25 @@ signals(signal::Symbol) = signals(Signal(signal))
 Indicates that the function [`get_initial_state`](@ref) has been called. Problems should use
 this as an opportunity to update initial conditions and initial data.
 
-# Call signature
+# Signature
 
 ```
-owner(signal, problem, [indices], u::Vector{Vector{T}}, data::Vector{Any}) where {T<:Number}
+owner(signal, [indices], problem, u, data)
 ```
+
+# Arguments
+- `signal::Signal{:initial_state}`
+- `indices::NTuple{N,Int64} where N`: (optional) indices of any [`Var`](@ref),
+    [`Data`](@ref), [`Func`](@ref), or [`Problem`](@ref) requested using
+    [`pass_indices`](@ref)
+- `problem::ClosedProblem`: the underlying problem structure
+- `u::Vector{Vector{T}} where {T<:Number}`: vector of initial values
+- `data::Vector{Any}`: vector of initial data
 
 # Notes
 
-* `u` is a vector of initial values (which themselves are vectors). While `u` can be mutated
-  at will, the initial values should not be.
-
-* `data` is a vector of initial data (which could be anything). Similar to `u`, while `data`
-  can be mutated, the initial data should not be.
+- While `u` can be mutated at will, the initial values should not be
+- Similar to `u`, while `data` can be mutated, the initial data should not be
 
 # Example
 
@@ -76,7 +99,20 @@ signals(signal::Signal{:initial_state}) = (@doc signals(::typeof(signal)))  # br
     Signal(:pre_init)
     Signal(:post_init)
 
-These signals are called when [`init!`](@ref) is called with a [`ClosedProblem`](@ref).
+These signals occur when [`init!`](@ref) is called with a [`ClosedProblem`](@ref).
+
+# Signature
+
+```
+owner(signal, [indices], problem)
+```
+
+# Arguments
+- `signal::Signal{:initial_state}`
+- `indices::NTuple{N,Int64} where N`: (optional) indices of any [`Var`](@ref),
+    [`Data`](@ref), [`Func`](@ref), or [`Problem`](@ref) requested using
+    [`pass_indices`](@ref)
+- `problem::ClosedProblem`: the underlying problem structure
 """
 signals(signal::Union{Signal{:pre_init},Signal{:post_init}}) = (@doc signals(::typeof(signal)))  # brackets are required due to special casing of @doc
 

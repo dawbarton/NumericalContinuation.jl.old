@@ -2,6 +2,7 @@ module FourierCollocation
 
 using ..NumericalContinuation: Var, Data, Func, Problem
 using ..NumericalContinuation: parameter, parameters, parameter_names
+using DocStringExtensions
 
 export fourier_collocation
 

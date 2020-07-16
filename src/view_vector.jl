@@ -10,6 +10,8 @@ struct ViewAxis
 end
 ViewAxis(n::Integer) =
     ViewAxis(zeros(Int64, n), Vector{UnitRange{Int64}}(undef, n), Ref(true))
+ViewAxis(dims::Vector) =
+    ViewAxis(dims, Vector{UnitRange{Int64}}(undef, length(dims)), Ref(true))
 Base.getindex(axis::ViewAxis, idx) = axis.dims[idx]
 
 function Base.setindex!(axis::ViewAxis, dim, idx)

@@ -44,6 +44,6 @@ end
 p0 = [1.0, 0.1, 0.05]
 u0 = [-0.233 -0.092 0.057 0.202 0.329 0.426 0.481 0.487 0.443 0.354 0.233 0.092 -0.057 -0.202 -0.329 -0.426 -0.481 -0.487 -0.443 -0.354 -0.233; 0.425 0.469 0.473 0.439 0.364 0.248 0.099 -0.063 -0.217 -0.34 -0.425 -0.468 -0.473 -0.439 -0.364 -0.248 -0.1 0.063 0.216 0.34 0.424]
 fourier = fourier_collocation("duffing", duffing!, [0, 2π/p0[1]], u0, p0, pnames=["ω", "Γ", "ξ"], phase=false, fix_t0=true, fix_t1=false)
-flat = NumericalContinuation.flatten(fourier)
-mfuncs = NumericalContinuation.MonitorFunctions()
-NumericalContinuation.init!(mfuncs, flat)
+opt = Options()
+closed = NumericalContinuation.ClosedProblem(fourier, opt)
+NumericalContinuation.init!(closed)

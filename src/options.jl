@@ -1,3 +1,5 @@
+export Options
+
 """
 Options for the continuation process.
 """

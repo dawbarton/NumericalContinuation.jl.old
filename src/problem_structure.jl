@@ -32,7 +32,7 @@ Var(
 ) = Var(name, initial_dim, initial_u, initial_t, top_level)
 
 function Base.show(io::IO, mime::MIME"text/plain", var::Var)
-    println(io, "$Var($(var.name))")
+    println(io, "$Var(\"$(var.name)\")")
     println(io, "    initial_dim → $(var.initial_dim)")
     println(io, "    initial_u → $(var.initial_u)")
     print(io, "    initial_t → $(var.initial_t)")
@@ -50,7 +50,7 @@ struct Data
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", data::Data)
-    println(io, "$Data($(data.name))")
+    println(io, "$Data(\"$(data.name)\")")
     print(io, "    initial_data → $(data.initial_data)")
 end
 
@@ -104,7 +104,7 @@ function Func(
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", func::Func)
-    println(io, "$Func($(func.name))")
+    println(io, "$Func(\"$(func.name)\")")
     println(io, "    initial_dim → $(func.initial_dim)")
     println(io, "    initial_f → $(func.initial_f)")
     println(io, "    group → $(func.group)")
@@ -138,7 +138,7 @@ reduces boilerplate.)
 """
 abstract type ProblemOwner end
 
-(owner::ProblemOwner)(::Signal, problem, indices = nothing) = nothing  # fallback for signal handling
+(owner::ProblemOwner)(::Signal, args...) = nothing  # fallback for signal handling
 
 """
     $(TYPEDEF)
@@ -177,7 +177,7 @@ function Problem(name, owner = nothing, func = (), problem = ())
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", problem::Problem)
-    println(io, "$Problem($(problem.name))")
+    println(io, "$Problem(\"$(problem.name)\")")
     println(io, "    func → $([nameof(f) for f in problem.func])")
     print(io, "    problem → $([nameof(p) for p in problem.problem])")
 end

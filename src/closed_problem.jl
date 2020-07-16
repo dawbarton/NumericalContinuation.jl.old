@@ -43,3 +43,39 @@ get_problem(problem::ClosedProblem) = problem.top_level
 get_flatproblem(problem::ClosedProblem) = problem.flat
 get_mfuncs(problem::ClosedProblem) = problem.mfuncs
 get_covering(problem::ClosedProblem) = problem.covering
+
+function get_initial_state(T::Type{<:Number}, closed::ClosedProblem)
+    u = Vector{Vector{T}}()
+    t = Vector{Vector{T}}()
+    for var in closed.flat.var
+        if var.initial_dim == 0
+            push!(u, T[])
+        elseif var.initial_u === nothing
+            push!(u, zeros(T, var.initial_dim))
+        elseif length(var.initial_u) == var.initial_dim
+            push!(u, convert(Vector{T}, var.initial_u))
+        else
+            throw(ErrorException("Initial data for variable $(var) does not have the correct number of dimensions"))
+        end
+        if var.initial_dim == 0
+            push!(t, T[])
+        elseif var.initial_t === nothing
+            push!(t, zeros(T, var.initial_dim))
+        elseif length(var.initial_t) == var.initial_dim
+            push!(t, convert(Vector{T}, var.initial_t))
+        else
+            throw(ErrorException("Initial tangent for variable $(var) does not have the correct number of dimensions"))
+        end
+    end
+    d = Vector{Any}()
+    for data in closed.flat.data
+        push!(d, data.initial_data)
+    end
+    # Allow problems to alter the initial values/data
+    signal!(Signal(:initial_state), closed, u, t, d)
+    # Condense
+    uu = reduce(vcat, u)
+    tt = reduce(vcat, t)
+    va = ViewAxis(length.(u))
+    return (va=va, u=uu, t=tt, data=d)
+end

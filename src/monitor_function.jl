@@ -3,69 +3,11 @@ export monitor_functions, monitor_function, get_active, set_active!
 """
     $(TYPEDEF)
 
-A problem structure to contain monitor functions.
-"""
-struct MonitorFunctions
-    func::Vector{Func}
-    active::Vector{Bool}
-    idx_var::Vector{Int64}
-    idx_data::Vector{Int64}
-    idx_func::Vector{Int64}
-    name::Dict{String,Int64}
-end
-MonitorFunctions() =
-    MonitorFunctions(Func[], Bool[], Int64[], Int64[], Int64[], Dict{String,Int64}())
-
-function (mfuncs::MonitorFunctions)(::Signal{:post_correct}, problem)
-    # Store the var value in data (if var is non-empty)
-    chart = get_current_chart(problem)
-    u = get_uview(chart)
-    data = get_data(chart)
-    for (active, idx_var, idx_data) in zip(mfuncs.active, mfuncs.idx_var, mfuncs.idx_data)
-        if active
-            data[idx_data][] = u[idx_var]
-        end
-    end
-end
-
-function init!(mfuncs::MonitorFunctions, problem)
-    flat = get_flatproblem(problem)
-    # Find all monitor functions and store their locations
-    for (i, func) in pairs(flat.func)
-        if func.func isa MonitorFunction
-            idx_var = findfirst(==(func.var[1]), flat.var)
-            idx_data = findfirst(==(func.data[1]), flat.data)
-            push!(mfuncs.func, func)
-            push!(mfuncs.active, func.func.active[])
-            push!(mfuncs.idx_var, idx_var)
-            push!(mfuncs.idx_data, idx_data)
-            push!(mfuncs.idx_func, i)
-            mfuncs.name[first(k for (k, v) in flat.var_names if v == idx_var)] =
-                lastindex(mfuncs.func)
-        end
-    end
-end
-
-function exchange_pars(flat::FlatProblem) end
-
-"""
-    $(SIGNATURES)
-
-Create a problem structure to contain monitor functions
-"""
-function monitor_functions(name = "mfuncs")
-    problem = Problem(name, MonitorFunctions())
-    return problem
-end
-
-"""
-    $(TYPEDEF)
-
 An individual monitor function.
 """
 struct MonitorFunction{F}
     f::F
-    active::Base.RefValue{Bool}
+    initial_active::Base.RefValue{Bool}
 end
 
 # Slightly annoying special casing of the different combinations of inputs to account for
@@ -158,7 +100,7 @@ structure; once the continuation problem is closed, changing this has no effect.
 """
 function set_active!(mfunc::Func, active::Bool)
     if mfunc.func isa MonitorFunction
-        mfunc.func.active[] = active
+        mfunc.func.initial_active[] = active
     else
         throw(ArgumentError("Func provided is not a MonitorFunction"))
     end
@@ -171,8 +113,76 @@ Return whether a monitor function is active (able to change value) or not.
 """
 function get_active(mfunc::Func)
     if mfunc.func isa MonitorFunction
-        return mfunc.func.active[]
+        return mfunc.func.initial_active[]
     else
         throw(ArgumentError("Func provided is not a MonitorFunction"))
     end
+end
+
+"""
+    $(TYPEDEF)
+
+A problem structure to contain monitor functions.
+"""
+struct MonitorFunctions <: ProblemOwner
+    mfunc::Vector{MonitorFunction}  # MonitorFunction is an abstract type but that's fine since it's not used in a hot loop
+    idx_var::Vector{Int64}
+    idx_data::Vector{Int64}
+    idx_func::Vector{Int64}
+    name::Dict{String,Int64}
+end
+MonitorFunctions() =
+    MonitorFunctions(MonitorFunction[], Int64[], Int64[], Int64[], Dict{String,Int64}())
+
+function (mfuncs::MonitorFunctions)(::Signal{:post_correct}, problem)
+    # Store the var value in data (if var is non-empty)
+    chart = get_current_chart(problem)
+    u = get_uview(chart)
+    data = get_data(chart)
+    for (idx_var, idx_data) in zip(mfuncs.idx_var, mfuncs.idx_data)
+        if !isempty(u[idx_var])
+            data[idx_data][] = u[idx_var]
+        end
+    end
+    return
+end
+
+function (mfuncs::MonitorFunctions)(::Signal{:initial_state}, problem, u, t, data)
+    T = eltype(eltype(u))
+    for (mfunc, idx_var) in zip(mfuncs.mfunc, mfuncs.idx_var)
+        if !mfunc.initial_active[]
+            u[idx_var] = T[]
+            t[idx_var] = T[]
+        end
+    end
+    return
+end
+
+function init!(mfuncs::MonitorFunctions, problem)
+    flat = get_flatproblem(problem)
+    # Find all monitor functions and store their locations
+    for (i, func) in pairs(flat.func)
+        if func.func isa MonitorFunction
+            idx_var = findfirst(==(func.var[1]), flat.var)
+            idx_data = findfirst(==(func.data[1]), flat.data)
+            push!(mfuncs.mfunc, func.func)
+            push!(mfuncs.idx_var, idx_var)
+            push!(mfuncs.idx_data, idx_data)
+            push!(mfuncs.idx_func, i)
+            mfuncs.name[first(k for (k, v) in flat.var_names if v == idx_var)] =
+                lastindex(mfuncs.mfunc)
+        end
+    end
+end
+
+function exchange_pars(flat::FlatProblem) end
+
+"""
+    $(SIGNATURES)
+
+Create a problem structure to contain monitor functions
+"""
+function monitor_functions(name = "mfuncs")
+    problem = Problem(name, MonitorFunctions())
+    return problem
 end

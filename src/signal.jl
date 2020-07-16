@@ -67,18 +67,20 @@ owner(signal, [indices], problem, u, data)
 ```
 
 # Arguments
+
 - `signal::Signal{:initial_state}`
 - `indices::NTuple{N,Int64} where N`: (optional) indices of any [`Var`](@ref),
     [`Data`](@ref), [`Func`](@ref), or [`Problem`](@ref) requested using
     [`pass_indices`](@ref)
 - `problem::ClosedProblem`: the underlying problem structure
 - `u::Vector{Vector{T}} where {T<:Number}`: vector of initial values
+- `t::Vector{Vector{T}} where {T<:Number}`: vector of initial tangents
 - `data::Vector{Any}`: vector of initial data
 
 # Notes
 
-- While `u` can be mutated at will, the initial values should not be
-- Similar to `u`, while `data` can be mutated, the initial data should not be
+- While `u`, `t`, and `data` can be mutated at will, the values contained within them should
+    not be since they are user supplied. Instead, they should be copied before mutating.
 
 # Example
 
@@ -108,6 +110,7 @@ owner(signal, [indices], problem)
 ```
 
 # Arguments
+
 - `signal::Signal{:initial_state}`
 - `indices::NTuple{N,Int64} where N`: (optional) indices of any [`Var`](@ref),
     [`Data`](@ref), [`Func`](@ref), or [`Problem`](@ref) requested using

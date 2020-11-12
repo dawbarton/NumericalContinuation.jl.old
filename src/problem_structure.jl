@@ -38,6 +38,8 @@ function Base.show(io::IO, mime::MIME"text/plain", var::Var)
     print(io, "    initial_t → $(var.initial_t)")
 end
 
+const ALLVARS = Var("ALLVARS"; initial_dim=0, top_level=true)
+
 """
     $(TYPEDEF)
 
@@ -441,11 +443,15 @@ function _gen_call_group(flat::FlatProblem, group::Integer)
         func_f = :($(f.func)(res[$i]))
         u = :(())
         for var in f.var
-            idx = findfirst(==(var), flat.var)
-            push!(u.args, :(u[$idx]))
+            if var === ALLVARS
+                push!(u.args, :(u[:]))
+            else
+                idx = findfirst(==(var), flat.var)
+                push!(u.args, :(u[$idx]))
+            end
         end
         if length(u.args) == 0
-            push!(func_f.args, :(u[:]))  # TODO: this won't work for monitor functions that require the entire state
+            push!(func_f.args, :(u[:]))
         elseif length(u.args) == 1
             push!(func_f.args, u.args[1])
         else

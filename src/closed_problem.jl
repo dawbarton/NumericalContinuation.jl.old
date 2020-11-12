@@ -6,14 +6,17 @@ struct ClosedProblem{C}  # TODO: it's not clear if this specialisation will help
     covering::C
 end
 
+DEFAULTCOVER(prob) = Problem("covering", nothing)
+init!(::Nothing, closed) = nothing
+
 function ClosedProblem(problem::Problem, options::Options, cover = DEFAULTCOVER)
-    top_level = Problem("")
+    top_level = Problem("cont")
     push!(top_level, problem)
     mfuncs_problem = monitor_functions()
-    mfuncs = mfuncs_problem.func
+    mfuncs = mfuncs_problem.owner
     push!(top_level, mfuncs_problem)
     covering_problem = cover(top_level)
-    covering = covering_problem.func
+    covering = covering_problem.owner
     push!(top_level, covering_problem)
     flat = flatten(top_level)
     closed = ClosedProblem(options, top_level, flat, mfuncs, covering)

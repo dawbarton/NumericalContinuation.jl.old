@@ -8,10 +8,12 @@ struct ViewAxis
     indices::Vector{UnitRange{Int64}}
     dirty::Base.RefValue{Bool}
 end
-ViewAxis(n::Integer) =
-    ViewAxis(zeros(Int64, n), Vector{UnitRange{Int64}}(undef, n), Ref(true))
-ViewAxis(dims::Vector) =
-    ViewAxis(dims, Vector{UnitRange{Int64}}(undef, length(dims)), Ref(true))
+function ViewAxis(n::Integer)
+    return ViewAxis(zeros(Int64, n), Vector{UnitRange{Int64}}(undef, n), Ref(true))
+end
+function ViewAxis(dims::Vector)
+    return ViewAxis(dims, Vector{UnitRange{Int64}}(undef, length(dims)), Ref(true))
+end
 Base.getindex(axis::ViewAxis, idx) = axis.dims[idx]
 
 function Base.setindex!(axis::ViewAxis, dim, idx)
@@ -29,7 +31,7 @@ function update_indices!(axis::ViewAxis)
         idx0 = 0
         for i in eachindex(axis.dims)
             idx1 = idx0 + axis.dims[i]
-            axis.indices[i] = (idx0+1):idx1
+            axis.indices[i] = (idx0 + 1):idx1
             idx0 = idx1
         end
     end
@@ -37,7 +39,7 @@ function update_indices!(axis::ViewAxis)
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", axis::ViewAxis)
-    print(io, "$ViewAxis($(axis.dims))")
+    return print(io, "$ViewAxis($(axis.dims))")
 end
 
 """
@@ -66,9 +68,11 @@ ViewArray(axes::ViewAxis, array) = ViewArray((axes,), array)
 Base.getindex(va::ViewArray{1}, ::Colon) = va.array
 Base.getindex(va::ViewArray{2}, ::Colon) = va.array
 Base.getindex(va::ViewArray{1}, i1) = view(va.array, va.axes[1].indices[i1])
-Base.getindex(va::ViewArray{2}, i1, i2) =
-    view(va.array, va.axes[1].indices[i1], va.axes[2].indices[i2])
+function Base.getindex(va::ViewArray{2}, i1, i2)
+    return view(va.array, va.axes[1].indices[i1], va.axes[2].indices[i2])
+end
 
 Base.setindex!(va::ViewArray{1}, value, i1) = va.array[va.axes[1].indices[i1]] = value
-Base.setindex!(va::ViewArray{2}, value, i1, i2) =
-    va.array[va.axes[1].indices[i1], va.axes[2].indices[i2]] = value
+function Base.setindex!(va::ViewArray{2}, value, i1, i2)
+    return va.array[va.axes[1].indices[i1], va.axes[2].indices[i2]] = value
+end

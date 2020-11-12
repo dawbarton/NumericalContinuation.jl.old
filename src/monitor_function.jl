@@ -17,51 +17,48 @@ function (mfunc::MonitorFunction)(res, u::Tuple, data::Tuple, prob...)
     res[1] =
         mfunc.f(Base.tail(u), Base.tail(data), prob...) -
         (isempty(u[1]) ? data[1][] : u[1][1])
-    return
+    return nothing
 end
 
 function (mfunc::MonitorFunction)(res, u::Tuple{<:Any,<:Any}, data::Tuple, prob...)
     res[1] = mfunc.f(u[2], Base.tail(data), prob...) - (isempty(u[1]) ? data[1][] : u[1][1])
-    return
+    return nothing
 end
 
 function (mfunc::MonitorFunction)(res, u::Tuple, data::Tuple{<:Any,<:Any}, prob...)
     res[1] = mfunc.f(Base.tail(u), data[2], prob...) - (isempty(u[1]) ? data[1][] : u[1][1])
-    return
+    return nothing
 end
 
 function (mfunc::MonitorFunction)(
-    res,
-    u::Tuple{<:Any,<:Any},
-    data::Tuple{<:Any,<:Any},
-    prob...,
+    res, u::Tuple{<:Any,<:Any}, data::Tuple{<:Any,<:Any}, prob...
 )
     res[1] = mfunc.f(u[2], data[2], prob...) - (isempty(u[1]) ? data[1][] : u[1][1])
-    return
+    return nothing
 end
 
 function (mfunc::MonitorFunction)(res, u::Tuple, data::Tuple{<:Any}, prob...)
     res[1] = mfunc.f(Base.tail(u), prob...) - (isempty(u[1]) ? data[] : u[1][1])
-    return
+    return nothing
 end
 
 function (mfunc::MonitorFunction)(res, u::Tuple{<:Any,<:Any}, data::Tuple{<:Any}, prob...)
     res[1] = mfunc.f(u[2], prob...) - (isempty(u[1]) ? data[] : u[1][1])
-    return
+    return nothing
 end
 
 function monitor_function(
     name,
     f,
-    var = (),
-    data = ();
-    initial_value = nothing,
-    active = false,
-    group = :embedded,
-    pass_problem = false,
-    top_level = true,
+    var=(),
+    data=();
+    initial_value=nothing,
+    active=false,
+    group=:embedded,
+    pass_problem=false,
+    top_level=true,
 )
-    mvar = Var(name; initial_dim = 1, initial_u = initial_value, top_level = top_level)
+    mvar = Var(name; initial_dim=1, initial_u=initial_value, top_level=top_level)
     mdata = Data("mfunc_data", Ref(initial_value))
     fullgroup = (group isa Symbol ? push! : append!)([:mfunc], group)
     return Func(
@@ -69,27 +66,23 @@ function monitor_function(
         MonitorFunction(f, Ref(active)),
         (mvar, var...),
         (mdata, data...);
-        initial_dim = 1,
-        group = fullgroup,
-        pass_problem = pass_problem,
+        initial_dim=1,
+        group=fullgroup,
+        pass_problem=pass_problem,
     )
 end
 
-function parameter(name, var; active = false, top_level = true, index = 1)
+function parameter(name, var; active=false, top_level=true, index=1)
     local mfunc
     let index = index
         mfunc = monitor_function(
-            name,
-            u -> u[index],
-            (var,);
-            active = active,
-            top_level = top_level,
+            name, u -> u[index], (var,); active=active, top_level=top_level
         )
     end
 end
 
 function parameters(names, var; kwargs...)
-    return [parameter(name, var; index = i, kwargs...) for (i, name) in enumerate(names)]
+    return [parameter(name, var; index=i, kwargs...) for (i, name) in enumerate(names)]
 end
 
 """
@@ -131,8 +124,11 @@ struct MonitorFunctions <: ProblemOwner
     idx_func::Vector{Int64}
     name::Dict{String,Int64}
 end
-MonitorFunctions() =
-    MonitorFunctions(MonitorFunction[], Int64[], Int64[], Int64[], Dict{String,Int64}())
+function MonitorFunctions()
+    return MonitorFunctions(
+        MonitorFunction[], Int64[], Int64[], Int64[], Dict{String,Int64}()
+    )
+end
 
 function (mfuncs::MonitorFunctions)(::Signal{:post_correct}, problem)
     # Store the var value in data (if var is non-empty)
@@ -144,7 +140,7 @@ function (mfuncs::MonitorFunctions)(::Signal{:post_correct}, problem)
             data[idx_data][] = u[idx_var]
         end
     end
-    return
+    return nothing
 end
 
 function (mfuncs::MonitorFunctions)(::Signal{:initial_state}, problem, u, t, data)
@@ -155,7 +151,7 @@ function (mfuncs::MonitorFunctions)(::Signal{:initial_state}, problem, u, t, dat
             t[idx_var] = T[]
         end
     end
-    return
+    return nothing
 end
 
 function init!(mfuncs::MonitorFunctions, problem)
@@ -169,8 +165,7 @@ function init!(mfuncs::MonitorFunctions, problem)
             push!(mfuncs.idx_var, idx_var)
             push!(mfuncs.idx_data, idx_data)
             push!(mfuncs.idx_func, i)
-            mfuncs.name[first(k for (k, v) in flat.var_names if v == idx_var)] =
-                lastindex(mfuncs.mfunc)
+            mfuncs.name[first(k for (k, v) in flat.var_names if v == idx_var)] = lastindex(mfuncs.mfunc)
         end
     end
 end
@@ -182,7 +177,7 @@ function exchange_pars(flat::FlatProblem) end
 
 Create a problem structure to contain monitor functions
 """
-function monitor_functions(name = "mfuncs")
+function monitor_functions(name="mfuncs")
     problem = Problem(name, MonitorFunctions())
     return problem
 end

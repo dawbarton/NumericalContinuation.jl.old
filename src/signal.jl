@@ -117,5 +117,6 @@ owner(signal, [indices], problem)
     [`pass_indices`](@ref)
 - `problem::ClosedProblem`: the underlying problem structure
 """
-signals(signal::Union{Signal{:pre_init},Signal{:post_init}}) = (@doc signals(::typeof(signal)))  # brackets are required due to special casing of @doc
-
+function signals(signal::Union{Signal{:pre_init},Signal{:post_init}})
+    return (@doc signals(::typeof(signal)))
+end  # brackets are required due to special casing of @doc

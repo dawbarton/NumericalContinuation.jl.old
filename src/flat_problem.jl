@@ -22,21 +22,23 @@ struct FlatProblem{G,O}
     call_owner::O
 end
 
-FlatProblem(mfuncs::MonitorFunctions) = FlatProblem(
-    Var[],
-    Dict{String,Int64}(),
-    Data[],
-    Dict{String,Int64}(),
-    Func[],
-    Dict{String,Int64}(),
-    Vector{Func}[],
-    Dict{Symbol,Int64}(),
-    Problem[],
-    Dict{String,Int64}(),
-    mfuncs,
-    nothing,
-    nothing,
-)
+function FlatProblem(mfuncs::MonitorFunctions)
+    return FlatProblem(
+        Var[],
+        Dict{String,Int64}(),
+        Data[],
+        Dict{String,Int64}(),
+        Func[],
+        Dict{String,Int64}(),
+        Vector{Func}[],
+        Dict{Symbol,Int64}(),
+        Problem[],
+        Dict{String,Int64}(),
+        mfuncs,
+        nothing,
+        nothing,
+    )
+end
 
 function Base.show(io::IO, mime::MIME"text/plain", flat::FlatProblem)
     println(io, "$FlatProblem()")
@@ -45,6 +47,7 @@ function Base.show(io::IO, mime::MIME"text/plain", flat::FlatProblem)
     println(io, "    func → $(collect(keys(flat.func_names)))")
     println(io, "    problem → $(collect(keys(flat.problem_names)))")
     print(io, "    group → $(collect(keys(flat.group_names)))")
+    return nothing
 end
 
 get_flatproblem(flat::FlatProblem) = flat
@@ -188,8 +191,9 @@ function _gen_call_group(flat::FlatProblem, group::Integer)
     push!(func.args[2].args, :nothing)
     return func
 end
-_gen_call_group(flat::FlatProblem, group::Symbol) =
-    _gen_call_group(flat, flat.group_names[group])
+function _gen_call_group(flat::FlatProblem, group::Symbol)
+    return _gen_call_group(flat, flat.group_names[group])
+end
 
 function _gen_call_owner(flat::FlatProblem)
     func = :(function (signal::Signal, problem) end)

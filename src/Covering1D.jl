@@ -7,7 +7,7 @@ using ..NumericalContinuation: ALLVARS
 function pseudoarclength(u, data)
     result = zero(eltype(u))
     for i in eachindex(u)
-        result += (u[i] - data.u[i])*data.t[i]
+        result += (u[i] - data.u[i]) * data.t[i]
     end
     return result
 end
@@ -22,7 +22,7 @@ function (::Cover)(::Signal{:pre_correct}, indices, problem)
     tv[indices[2]] = 0
     data = get_data(chart)
     data[indices[1]] = (u=u, t=t)
-    return
+    return nothing
 end
 
 function covering1d(problem::Problem)
@@ -30,7 +30,7 @@ function covering1d(problem::Problem)
     mfunc = monitor_function("pseudoarclength", pseudoarclength, (ALLVARS,), (data,))
     cover = Problem("covering", Cover(), (mfunc,))
     pass_indices(cover, data)
-    pass_indices(cover, mfunc.var[1])
+    return pass_indices(cover, mfunc.var[1])
 end
 
 end  # module

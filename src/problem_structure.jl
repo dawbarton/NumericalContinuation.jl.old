@@ -23,19 +23,21 @@ struct Var
     initial_t::Any
     top_level::Bool
 end
-Var(
+function Var(
     name;
-    initial_u = nothing,
-    initial_t = nothing,
-    initial_dim = length(initial_u),
-    top_level = false,
-) = Var(name, initial_dim, initial_u, initial_t, top_level)
+    initial_u=nothing,
+    initial_t=nothing,
+    initial_dim=length(initial_u),
+    top_level=false,
+)
+    return Var(name, initial_dim, initial_u, initial_t, top_level)
+end
 
 function Base.show(io::IO, mime::MIME"text/plain", var::Var)
     println(io, "$Var(\"$(var.name)\")")
     println(io, "    initial_dim → $(var.initial_dim)")
     println(io, "    initial_u → $(var.initial_u)")
-    print(io, "    initial_t → $(var.initial_t)")
+    return print(io, "    initial_t → $(var.initial_t)")
 end
 
 const ALLVARS = Var("ALLVARS"; initial_dim=0, top_level=true)
@@ -53,7 +55,7 @@ end
 
 function Base.show(io::IO, mime::MIME"text/plain", data::Data)
     println(io, "$Data(\"$(data.name)\")")
-    print(io, "    initial_data → $(data.initial_data)")
+    return print(io, "    initial_data → $(data.initial_data)")
 end
 
 """
@@ -77,12 +79,12 @@ end
 function Func(
     name,
     func,
-    var = (),
-    data = ();
-    initial_f = nothing,
-    initial_dim = length(initial_f),
-    group = [:embedded],
-    pass_problem = false,
+    var=(),
+    data=();
+    initial_f=nothing,
+    initial_dim=length(initial_f),
+    group=[:embedded],
+    pass_problem=false,
 )
     f = Func(
         name,
@@ -112,7 +114,7 @@ function Base.show(io::IO, mime::MIME"text/plain", func::Func)
     println(io, "    group → $(func.group)")
     println(io, "    pass_problem → $(func.pass_problem)")
     println(io, "    var → $([nameof(v) for v in func.var])")
-    print(io, "    data → $([nameof(d) for d in func.data])")
+    return print(io, "    data → $([nameof(d) for d in func.data])")
 end
 
 function glue(var1::Var, var2::Var)
@@ -123,7 +125,7 @@ function glue(var1::Var, var2::Var)
         var1.name * "=" * var2.name,
         (res, u) -> res .= u[1] .- u[2],
         (var1, var2);
-        initial_dim = var1.initial_dim,
+        initial_dim=var1.initial_dim,
     )
 end
 
@@ -159,7 +161,7 @@ end
 
 const ProblemTypes = Union{Var,Data,Func,Problem}  # Cannot put this earlier because of type recursion issue
 
-function Problem(name, owner = nothing, func = (), problem = ())
+function Problem(name, owner=nothing, func=(), problem=())
     prob = Problem(
         name,
         Vector{Func}[],
@@ -181,7 +183,7 @@ end
 function Base.show(io::IO, mime::MIME"text/plain", problem::Problem)
     println(io, "$Problem(\"$(problem.name)\")")
     println(io, "    func → $([nameof(f) for f in problem.func])")
-    print(io, "    problem → $([nameof(p) for p in problem.problem])")
+    return print(io, "    problem → $([nameof(p) for p in problem.problem])")
 end
 
 get_problem(problem::Problem) = problem
@@ -222,8 +224,7 @@ for (Collection, Item, name) in (
     end
 
     @eval function Base.append!(
-        collection::$Collection,
-        items::Union{NTuple{<:Any,$Item},AbstractVector{$Item}},
+        collection::$Collection, items::Union{NTuple{<:Any,$Item},AbstractVector{$Item}}
     )
         for item in items
             push!(collection, item)
@@ -232,9 +233,7 @@ for (Collection, Item, name) in (
     end
 
     @eval function Base.getindex(
-        collection::$Collection,
-        ::Type{$Item},
-        item::AbstractString,
+        collection::$Collection, ::Type{$Item}, item::AbstractString
     )
         return collection.$name[collection.$(Symbol(name, "_names"))[item]]
     end
@@ -242,7 +241,7 @@ end
 
 for (Collection, names) in ((Func, (:var, :data)), (Problem, (:func, :problem)))
     @eval function Base.getindex(collection::$Collection, item::AbstractString)
-        itempath = split(item, ".", limit = 2)
+        itempath = split(item, "."; limit=2)
         for subcollection in $names
             names_dict = getfield(collection, Symbol(subcollection, "_names"))
             if haskey(names_dict, itempath[1])
@@ -254,7 +253,7 @@ for (Collection, names) in ((Func, (:var, :data)), (Problem, (:func, :problem)))
                 end
             end
         end
-        throw(KeyError(item))
+        return throw(KeyError(item))
     end
 end
 
@@ -288,20 +287,22 @@ struct FlatProblem{G,O}
     call_owner::O
 end
 
-FlatProblem() = FlatProblem(
-    Var[],
-    Dict{String,Int64}(),
-    Data[],
-    Dict{String,Int64}(),
-    Func[],
-    Dict{String,Int64}(),
-    Vector{Func}[],
-    Dict{Symbol,Int64}(),
-    Problem[],
-    Dict{String,Int64}(),
-    nothing,
-    nothing,
-)
+function FlatProblem()
+    return FlatProblem(
+        Var[],
+        Dict{String,Int64}(),
+        Data[],
+        Dict{String,Int64}(),
+        Func[],
+        Dict{String,Int64}(),
+        Vector{Func}[],
+        Dict{Symbol,Int64}(),
+        Problem[],
+        Dict{String,Int64}(),
+        nothing,
+        nothing,
+    )
+end
 
 function Base.show(io::IO, mime::MIME"text/plain", flat::FlatProblem)
     println(io, "$FlatProblem()")
@@ -309,19 +310,19 @@ function Base.show(io::IO, mime::MIME"text/plain", flat::FlatProblem)
     println(io, "    data → $(collect(keys(flat.data_names)))")
     println(io, "    func → $(collect(keys(flat.func_names)))")
     println(io, "    problem → $(collect(keys(flat.problem_names)))")
-    print(io, "    group → $(collect(keys(flat.group_names)))")
+    return print(io, "    group → $(collect(keys(flat.group_names)))")
 end
 
 function evaluate!(res, flat::FlatProblem, group::Symbol, u, data, problem)
-    flat.call_group[group](res, u, data, problem)
+    return flat.call_group[group](res, u, data, problem)
 end
 
 function signal!(flat::FlatProblem, signal::Signal, args...)
-    flat.call_owner(signal, args...)
+    return flat.call_owner(signal, args...)
 end
 
 function signal!(signal::Signal, flat::FlatProblem, args...)
-    flat.call_owner(signal, flat, args...)
+    return flat.call_owner(signal, flat, args...)
 end
 
 get_problem(flat::FlatProblem) = flat.problem[1]
@@ -475,8 +476,9 @@ function _gen_call_group(flat::FlatProblem, group::Integer)
     push!(func.args[2].args, :nothing)
     return func
 end
-_gen_call_group(flat::FlatProblem, group::Symbol) =
-    _gen_call_group(flat, flat.group_names[group])
+function _gen_call_group(flat::FlatProblem, group::Symbol)
+    return _gen_call_group(flat, flat.group_names[group])
+end
 
 function _gen_call_owner(flat::FlatProblem)
     func = :(function (signal::Signal, args...) end)

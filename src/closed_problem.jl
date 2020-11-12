@@ -9,7 +9,7 @@ end
 DEFAULTCOVER(prob) = Problem("covering", nothing)
 init!(::Nothing, closed) = nothing
 
-function ClosedProblem(problem::Problem, options::Options, cover = DEFAULTCOVER)
+function ClosedProblem(problem::Problem, options::Options, cover=DEFAULTCOVER)
     top_level = Problem("cont")
     push!(top_level, problem)
     mfuncs_problem = monitor_functions()
@@ -19,27 +19,29 @@ function ClosedProblem(problem::Problem, options::Options, cover = DEFAULTCOVER)
     covering = covering_problem.owner
     push!(top_level, covering_problem)
     flat = flatten(top_level)
-    closed = ClosedProblem(options, top_level, flat, mfuncs, covering)
+    return closed = ClosedProblem(options, top_level, flat, mfuncs, covering)
 end
 
 function init!(closed::ClosedProblem)
     signal!(Signal(:pre_init), closed)
     init!(closed.mfuncs, closed)
     init!(closed.covering, closed)
-    signal!(Signal(:post_init), closed)
+    return signal!(Signal(:post_init), closed)
 end
 
 function run!(closed::ClosedProblem)
     signal!(Signal(:pre_run), closed)
     run!(closed.covering, closed)
-    signal!(Signal(:post_run), closed)
+    return signal!(Signal(:post_run), closed)
 end
 
-signal!(signal::Signal, closed::ClosedProblem, args...) =
-    signal!(closed.flat, signal, closed, args...)
+function signal!(signal::Signal, closed::ClosedProblem, args...)
+    return signal!(closed.flat, signal, closed, args...)
+end
 
-signal!(closed::ClosedProblem, signal::Signal, args...) =
-    signal!(closed.flat, signal, args...)
+function signal!(closed::ClosedProblem, signal::Signal, args...)
+    return signal!(closed.flat, signal, args...)
+end
 
 get_options(problem::ClosedProblem) = problem.options
 get_problem(problem::ClosedProblem) = problem.top_level
